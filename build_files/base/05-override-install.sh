@@ -12,6 +12,10 @@ set -eoux pipefail
       --repo="terra-extras" \
           switcheroo-control switcheroo-control
 
+# super cursed dnf upgrade in container for kde-beta stuff
+dnf -y upgrade $(dnf group info "kde-desktop" | awk '/Mandatory Packages:/,/Optional Packages:/ { if ($0 !~ /Packages:/ && $0 != "") print $0 }')
+
+
 # Fix for ID in fwupd
   dnf5 -y swap \
       --repo=copr:copr.fedorainfracloud.org:ublue-os:staging \

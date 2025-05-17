@@ -4,6 +4,10 @@ echo "::group:: ===$(basename "$0")==="
 
 set -eoux pipefail
 
+
+# Add kde-sig repo for 6.4 beta
+dnf5 -y copr enable @kdesig/kde-beta
+
 # Add Staging repo
 dnf5 -y copr enable ublue-os/staging
 
