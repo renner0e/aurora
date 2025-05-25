@@ -37,9 +37,11 @@ SPECS=(
     "libblockdev-lvm"
     "libblockdev-dm"
     "anaconda-live"
-    "anaconda-webui"
 )
 dnf install -y "${SPECS[@]}"
+
+dnf5 -y copr enable @rhinstaller/Anaconda-webui
+dnf5 -y install anaconda-webui
 
 # Anaconda Profile Detection
 
