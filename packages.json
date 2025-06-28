@@ -66,7 +66,7 @@
 				"sssd-nfs-idmap",
 				"starship",
 				"sunshine",
-				"taidan",
+				"https://kojipkgs.fedoraproject.org//packages/kiss/0.1.0~20250524gitade7962/1.fc43/x86_64/kiss-0.1.0~20250524gitade7962-1.fc43.x86_64.rpm",
 				"tailscale",
 				"tmux",
 				"ublue-bling",
