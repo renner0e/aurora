@@ -43,13 +43,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
       - name: Maximize build space
-        uses: ublue-os/container-storage-action@1765c85a3c86829bfe216fbae1774fbc55d89b41
+        uses: renner0e/container-storage-action@975a35ecefc3e702fbc367464aec4eafe1e0c8bd
+
         with:
           target-dir: /var/lib/containers
           mount-opts: compress-force=zstd:2
           # at maximum default/no value 0.8 means
           # 52.40GiB availabe on /var/lib/containers
-          loopback-free: 0.2
+          loopback-free: 0.5
 
       - name: Setup Just
         uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
