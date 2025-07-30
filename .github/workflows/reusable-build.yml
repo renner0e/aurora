@@ -50,7 +50,7 @@ jobs:
           mount-opts: compress-force=zstd:2
           # at maximum default/no value 0.8 means
           # 52.40GiB availabe on /var/lib/containers
-          loopback-free: 0.5
+          loopback-free: 0.2
 
       - name: Setup Just
         uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
