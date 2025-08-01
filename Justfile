@@ -518,7 +518,7 @@ build-iso $image="aurora" $tag="latest" $flavor="main" ghcr="0" pipeline="0":
         rm -rf "${COPYTMP}"
     fi
 
-    FLATPAK_DIR_SHORTNAME="aurora_flatpaks"
+    FLATPAK_DIR_SHORTNAME="flatpaks"
 
     # Generate Flatpak List
     TEMP_FLATPAK_INSTALL_DIR="$(mktemp -d -p /tmp flatpak-XXXXX)"
@@ -531,7 +531,7 @@ build-iso $image="aurora" $tag="latest" $flavor="main" ghcr="0" pipeline="0":
     if [[ "${image_name}" =~ dx ]]; then
         while IFS= read -r line; do
             flatpak_refs+=("$line")
-        done < "dx_flatpaks/flatpaks"
+        done < "flatpaks/aurora-dx"
     fi
 
     echo "Flatpak refs: ${flatpak_refs[@]}"
