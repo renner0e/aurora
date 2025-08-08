@@ -52,6 +52,9 @@ echo "::endgroup::"
 # Beta
 /ctx/build_files/base/10-beta.sh
 
+# KDE Master
+/ctx/build_files/base/12-kde-master.sh
+
 ## late stage changes
 
 # Systemd and Remove Items

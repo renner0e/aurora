@@ -1,0 +1,154 @@
+#!/usr/bin/env bash
+echo "::group:: ===$(basename "$0")==="
+set -ouex pipefail
+dnf5 -y copr enable solopasha/plasma-unstable
+
+# new packages not in aurora yet
+dnf5 -y install knighttime kwayland-integration oxygen-sounds plasma-oxygen
+
+
+dnf5 -y upgrade \
+  aurorae \
+  bluedevil \
+  breeze-cursor-theme \
+  breeze-gtk-gtk2 \
+  breeze-gtk-gtk3 \
+  breeze-gtk-gtk4 \
+  ddcutil \
+  flatpak-kcm \
+  kactivitymanagerd \
+  kate-krunner-plugin \
+  kde-cli-tools \
+  kde-gtk-config \
+  kdecoration \
+  kdeplasma-addons \
+  kf6-attica \
+  kf6-baloo \
+  kf6-bluez-qt \
+  kf6-breeze-icons \
+  kf6-frameworkintegration \
+  kf6-karchive \
+  kf6-kauth \
+  kf6-kbookmarks \
+  kf6-kcalendarcore \
+  kf6-kcmutils \
+  kf6-kcodecs \
+  kf6-kcolorscheme \
+  kf6-kcompletion \
+  kf6-kconfig \
+  kf6-kconfigwidgets \
+  kf6-kcontacts \
+  kf6-kcoreaddons \
+  kf6-kcrash \
+  kf6-kdbusaddons \
+  kf6-kdeclarative \
+  kf6-kded \
+  kf6-kdesu \
+  kf6-kdnssd \
+  kf6-kdoctools \
+  kf6-kfilemetadata \
+  kf6-kglobalaccel \
+  kf6-kguiaddons \
+  kf6-kholidays \
+  kf6-ki18n \
+  kf6-kiconthemes \
+  kf6-kidletime \
+  kf6-kimageformats \
+  kf6-kio-core \
+  kf6-kio-core-libs \
+  kf6-kio-doc \
+  kf6-kio-file-widgets \
+  kf6-kio-gui \
+  kf6-kio-widgets \
+  kf6-kio-widgets-libs \
+  kf6-kirigami \
+  kf6-kitemmodels \
+  kf6-kitemviews \
+  kf6-kjobwidgets \
+  kf6-knewstuff \
+  kf6-knotifications \
+  kf6-knotifyconfig \
+  kf6-kpackage \
+  kf6-kparts \
+  kf6-kpeople \
+  kf6-kpty \
+  kf6-kquickcharts \
+  kf6-krunner \
+  kf6-kservice \
+  kf6-kstatusnotifieritem \
+  kf6-ksvg \
+  kf6-ktexteditor \
+  kf6-ktexttemplate \
+  kf6-ktextwidgets \
+  kf6-kunitconversion \
+  kf6-kuserfeedback \
+  kf6-kwallet \
+  kf6-kwidgetsaddons \
+  kf6-kwindowsystem \
+  kf6-kxmlgui \
+  kf6-modemmanager-qt \
+  kf6-networkmanager-qt \
+  kf6-prison \
+  kf6-purpose \
+  kf6-qqc2-desktop-style \
+  kf6-solid \
+  kf6-sonnet \
+  kf6-syndication \
+  kf6-syntax-highlighting \
+  kglobalacceld \
+  kinfocenter \
+  kmenuedit \
+  kpipewire \
+  krdp \
+  kscreen \
+  kscreenlocker \
+  ksshaskpass \
+  ksystemstats \
+  kwayland \
+  kwin \
+  kwrited \
+  layer-shell-qt \
+  libkscreen \
+  libksysguard \
+  libplasma \
+  ocean-sound-theme \
+  pam-kwallet \
+  plasma-activities \
+  plasma-activities-stats \
+  plasma-breeze \
+  plasma-breeze-common \
+  plasma-breeze-qt5 \
+  plasma-breeze-qt6 \
+  plasma-browser-integration \
+  plasma-desktop \
+  plasma-desktop-doc \
+  plasma-discover \
+  plasma-disks \
+  plasma-drkonqi \
+  plasma-firewall \
+  plasma-integration \
+  plasma-integration-qt5 \
+  plasma-nm \
+  plasma-pa \
+  plasma-print-manager \
+  plasma-systemmonitor \
+  plasma-systemsettings \
+  plasma-thunderbolt \
+  plasma-vault \
+  plasma-welcome \
+  plasma-workspace \
+  plasma-workspace-wallpapers \
+  plasma5support \
+  polkit-kde \
+  powerdevil \
+  qqc2-breeze-style \
+  qt6-qtwayland \
+  sddm-breeze \
+  sddm-kcm \
+  sddm-wayland-plasma \
+  spectacle \
+  xdg-desktop-portal-kde
+
+dnf5 -y copr disable solopasha/plasma-unstable
+
+echo "::endgroup::"
