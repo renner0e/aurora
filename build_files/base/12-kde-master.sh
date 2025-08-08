@@ -6,7 +6,7 @@ dnf5 -y copr enable solopasha/plasma-unstable
 # new packages not in aurora yet
 dnf5 -y install knighttime kwayland-integration oxygen-sounds plasma-oxygen
 
-
+# Cursed
 dnf5 -y upgrade \
   aurorae \
   bluedevil \
@@ -106,6 +106,8 @@ dnf5 -y upgrade \
   ksystemstats \
   kwayland \
   kwin \
+  kwin-common \
+  kwin-libs \
   kwrited \
   layer-shell-qt \
   libkscreen \
