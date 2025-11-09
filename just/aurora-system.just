@@ -94,10 +94,10 @@ toggle-devmode:
         NEW_IMAGE=$(sed "s/\-dx//" <<< $CURRENT_IMAGE)
         rpm-ostree rebase $NEW_IMAGE
     fi
-    if gum choose "Do you want to also install the default development flatpaks?" ; then
+    if gum confirm "Do you want to also install the default development flatpaks?" ; then
             ujust install-system-flatpaks 1
     fi
-    if gum choose "Do you want to install extra fonts?" ; then
+    if gum confirm "Do you want to install extra fonts?" ; then
             ujust install-fonts
     fi
 
@@ -139,11 +139,6 @@ dx-group:
     done
 
     echo "Reboot system and log back in to use docker, libvirt, incus, and serial connections."
-
-# alias for configure-vfio
-[group('System')]
-setup-vfio:
-    @ujust configure-vfio
 
 # Install system flatpaks for rebasers
 [group('System')]
