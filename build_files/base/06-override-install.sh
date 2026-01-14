@@ -23,8 +23,8 @@ install -Dm0644 -t /usr/share/doc/aurora/ /tmp/aurora.pdf
 cp /usr/share/applications/dev.getaurora.aurora-docs.desktop /usr/share/kglobalaccel/
 
 # Starship Shell Prompt
-ghcurl "https://github.com/starship/starship/releases/latest/download/starship-$(uname -m)-unknown-linux-gnu.tar.gz" --retry 3 -o /tmp/starship.tar.gz
-ghcurl "https://github.com/starship/starship/releases/latest/download/starship-$(uname -m)-unknown-linux-gnu.tar.gz.sha256" --retry 3 -o /tmp/starship.tar.gz.sha256
+ghcurl "https://github.com/starship/starship/releases/latest/download/starship-$(uname -m)-unknown-linux-musl.tar.gz" --retry 3 -o /tmp/starship.tar.gz
+ghcurl "https://github.com/starship/starship/releases/latest/download/starship-$(uname -m)-unknown-linux-musl.tar.gz.sha256" --retry 3 -o /tmp/starship.tar.gz.sha256
 
 echo "$(cat /tmp/starship.tar.gz.sha256) /tmp/starship.tar.gz" | sha256sum --check
 tar -xzf /tmp/starship.tar.gz -C /tmp
