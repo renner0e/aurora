@@ -21,6 +21,10 @@ on:
 
 env:
   IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+  INPUTS_KERNEL_PIN: ${{ inputs.kernel_pin }}
+  MATRIX_BASE_NAME: ${{ matrix.base_name }}
+  MATRIX_IMAGE_FLAVOR: ${{ matrix.image_flavor }}
+  MATRIX_STREAM_NAME: ${{ matrix.stream_name }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.brand_name}}-${{ inputs.stream_name }}
@@ -67,18 +71,12 @@ jobs:
 
       - name: Image Name
         shell: bash
-        env:
-          MATRIX_BASE_NAME: ${{ matrix.base_name }}
-          MATRIX_STREAM_NAME: ${{ matrix.stream_name }}
-          MATRIX_IMAGE_FLAVOR: ${{ matrix.image_flavor }}
         run: |
           IMAGE_NAME="$(just image_name ${MATRIX_BASE_NAME} ${MATRIX_STREAM_NAME} ${MATRIX_IMAGE_FLAVOR})"
           echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
 
       - name: Default Tag
         shell: bash
-        env:
-          MATRIX_STREAM_NAME: ${{ matrix.stream_name }}
         run: |
           DEFAULT_TAG="$(just generate-default-tag \
                        "${MATRIX_STREAM_NAME}" \
@@ -91,10 +89,6 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MATRIX_BASE_NAME: ${{ matrix.base_name }}
-          MATRIX_STREAM_NAME: ${{ matrix.stream_name }}
-          MATRIX_IMAGE_FLAVOR: ${{ matrix.image_flavor }}
-          INPUTS_KERNEL_PIN: ${{ inputs.kernel_pin }}
         run: |
           sudo -E $(command -v just) repo_organization="${{ github.repository_owner }}" \
                     build-ghcr "${MATRIX_BASE_NAME}" \
@@ -114,18 +108,17 @@ jobs:
         id: generate-sbom
         env:
           IMAGE: ${{ env.IMAGE_NAME }}
-          STREAM_NAME: ${{ matrix.stream_name }}
           SYFT_CMD: ${{ steps.setup-syft.outputs.cmd }}
           OCI_DIR: "/tmp/image-oci-dir"
         run: |
           mkdir -p ${OCI_DIR}/rootfs
-          sudo podman container create --replace --name aurora-tmp "localhost/${IMAGE}:${STREAM_NAME}"
+          sudo podman container create --replace --name aurora-tmp "localhost/${IMAGE}:${MATRIX_STREAM_NAME}"
           sudo podman export aurora-tmp | sudo tar -C ${OCI_DIR}/rootfs -xf -
           sudo podman container rm aurora-tmp
 
           OUTPUT_PATH="$(mktemp -d)/sbom.json"
           export SYFT_PARALLELISM=$(($(nproc)*2))
-          sudo $SYFT_CMD --source-name "${IMAGE}"-"${STREAM_NAME}" ${OCI_DIR} -o syft-json=${OUTPUT_PATH}
+          sudo $SYFT_CMD --source-name "${IMAGE}"-"${MATRIX_STREAM_NAME}" ${OCI_DIR} -o syft-json=${OUTPUT_PATH}
           du -sh ${OUTPUT_PATH}
           echo "OUTPUT_PATH=${OUTPUT_PATH}" >> $GITHUB_OUTPUT
           sudo rm -rf ${OCI_DIR}
@@ -172,10 +165,6 @@ jobs:
         id: generate-tags
         shell: bash
         env:
-          MATRIX_BASE_NAME: "${{ matrix.base_name }}"
-          MATRIX_STREAM_NAME: "${{ matrix.stream_name }}"
-          MATRIX_IMAGE_FLAVOR: "${{ matrix.image_flavor }}"
-          INPUTS_KERNEL_PIN: "${{ inputs.kernel_pin }}"
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
           DEFAULT_TAG: ${{ env.DEFAULT_TAG }}
           GITHUB_EVENT_NAME: ${{ github.event_name }}
