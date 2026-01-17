@@ -18,6 +18,13 @@ on:
       kernel_pin:
         description: "The full kernel version to pin"
         type: string
+    outputs:
+      image:
+        description: "Image ref"
+        value: ${{ jobs.build_container.outputs.image }}
+      digest:
+        description: "Image digest"
+        value: ${{ jobs.build_container.outputs.digest }}
 
 env:
   IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
@@ -283,8 +290,8 @@ jobs:
       packages: write # for uploading attestations.
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
     with:
-      image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
-      digest: ${{ steps.push.outputs.outputs && fromJSON(steps.push.outputs.outputs).digest }}
+      image: ${{ needs.build_container.outputs.image }}
+      digest: ${{ needs.build_container.outputs.digest }}
       registry-username: ${{ github.actor }}
     secrets:
       registry-password: ${{ secrets.GITHUB_TOKEN }}
