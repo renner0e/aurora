@@ -25,6 +25,7 @@ COPY --from=brew /system_files /system_files/shared
 COPY /system_files /system_files
 
 ## aurora image section
+FROM ghcr.io/ublue-os/kinoite-main:43 AS base
 FROM ${BASE_IMAGE}:${FEDORA_MAJOR_VERSION} AS base
 
 ARG AKMODS_FLAVOR="coreos-stable"
