@@ -248,7 +248,7 @@ jobs:
         run: |
             set -euox pipefail
 
-            sudo -E podman push oci:"${IMAGE_NAME}_build" oci-archive:"${IMAGE_NAME}".oci
+            sudo -E podman save --format=oci-dir: -o ${IMAGE_NAME}".oci "${IMAGE_NAME}_build"
 
       - name: Upload OCI dir as Artifact
         if: github.event_name == 'pull_request'
