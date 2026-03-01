@@ -240,22 +240,12 @@ jobs:
 
             echo "digest=${digest}" >> $GITHUB_OUTPUT
 
-      - name: Create OCI dir
-        if: github.event_name == 'pull_request'
-        env:
-          IMAGE_NAME: ${{ env.IMAGE_NAME }}
-          DEFAULT_TAG: ${{ env.DEFAULT_TAG }}
-        run: |
-            set -euox pipefail
-
-            sudo -E podman save --format=oci-dir -o "${IMAGE_NAME}".oci "${IMAGE_NAME}_build"
-
       - name: Upload OCI dir as Artifact
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
           name: ${{ env.IMAGE_NAME }}.oci
-          path: ${{ env.IMAGE_NAME }}.oci
+          path: ${{ env.IMAGE_NAME }}_build
           if-no-files-found: error
           archive: false
 
