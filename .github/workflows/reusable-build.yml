@@ -240,6 +240,26 @@ jobs:
 
             echo "digest=${digest}" >> $GITHUB_OUTPUT
 
+      - name: Create OCI dir
+        if: github.event_name == 'pull_request'
+        env:
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          DEFAULT_TAG: ${{ env.DEFAULT_TAG }}
+        run: |
+            set -euox pipefail
+
+            digest=$(sudo podman inspect ${IMAGE_NAME}:${DEFAULT_TAG} --format '{{.Digest}}')
+            sudo -E podman push localhost/${IMAGE_NAME}@${digest} oci-archive:"${IMAGE_NAME}".oci
+
+      - name: Upload OCI dir as Artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
+        with:
+          name: ${{ env.IMAGE_NAME }}.oci
+          path: ${{ env.IMAGE_NAME }}.oci
+          if-no-files-found: error
+          archive: false
+
       - name: Install Cosign
         uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
         if: github.event_name != 'pull_request'
