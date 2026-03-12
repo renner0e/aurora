@@ -76,7 +76,6 @@ FEDORA_PACKAGES=(
     fcitx5-qt
     fcitx5-sayura
     fcitx5-unikey
-    fish
     flatpak-spawn
     foo2zjs
     gcc
