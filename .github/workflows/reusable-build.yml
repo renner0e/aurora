@@ -251,10 +251,25 @@ jobs:
       # TODO: remove me when we have a new podman in 26.04 runners
       # needed because old podman doesn't push layer annotations for
       # the rpm-ostree rechunker at all
-      - name: install podman from brew
+      - name: Update podman
         if: github.event_name != 'pull_request'
+        shell: bash
         run: |
-          /home/linuxbrew/.linuxbrew/bin/brew install podman
+          set -eux
+          # Require the runner is ubuntu-24.04
+          IDV=$(. /usr/lib/os-release && echo ${ID}-${VERSION_ID})
+          test "${IDV}" = "ubuntu-24.04"
+          # plucky is the next release. The azure.archive.ubuntu.com mirror only carries amd64.
+          # Other architectures like arm64 use ports.ubuntu.com/ubuntu-ports.
+          if [ "$(dpkg --print-architecture)" = "amd64" ]; then
+            mirror="http://azure.archive.ubuntu.com/ubuntu"
+          else
+            mirror="http://ports.ubuntu.com/ubuntu-ports"
+          fi
+          echo "deb ${mirror} plucky universe main" | sudo tee /etc/apt/sources.list.d/plucky.list
+          /bin/time -f '%E %C' sudo apt update
+          # skopeo is currently older in plucky for some reason hence --allow-downgrades
+          /bin/time -f '%E %C' sudo apt install -y --allow-downgrades crun/plucky podman/plucky skopeo/plucky
 
       - name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request'
@@ -280,11 +295,11 @@ jobs:
             # TODO: remove me when https://github.com/containers/podman/issues/27796 fixed
 
             for tag in ${ALIAS_TAGS}; do
-              sudo -E /home/linuxbrew/.linuxbrew/bin/podman push ${IMAGE_NAME}:${tag} ${LOWERCASE}/${IMAGE_NAME}:${tag}
+              sudo -E podman push ${IMAGE_NAME}:${tag} ${LOWERCASE}/${IMAGE_NAME}:${tag}
             done
 
             for tag in ${ALIAS_TAGS}; do
-              sudo -E /home/linuxbrew/.linuxbrew/bin/podman push ${IMAGE_NAME}:${tag} ${LOWERCASE}/${IMAGE_NAME}:${tag}
+              sudo -E podman push ${IMAGE_NAME}:${tag} ${LOWERCASE}/${IMAGE_NAME}:${tag}
             done
 
             digest=$(skopeo inspect docker://${LOWERCASE}/${IMAGE_NAME}:${DEFAULT_TAG} --format '{{.Digest}}')
