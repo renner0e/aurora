@@ -706,6 +706,27 @@ tag-images image_name="" default_tag="" tags="":
     # Show Images
     ${PODMAN} images
 
+# DNF CI package cache
+[group('Utility')]
+setup-cache $image="aurora" $tag="latest" ghcr="0" github_event="0":
+    #!/usr/bin/bash
+    set -eoux pipefail
+
+    image_name=$({{ just }} image_name '{{ image }}' '{{ tag }}')
+    fedora_version=$({{ just }} fedora_version '{{ image }}' '{{ tag }}')
+
+    ALLOW_CACHE_WRITE="false"
+
+    if [[ "${image_name}" == "aurora-dx" ]] && \
+       [[ "${tag}" == "latest" ]] && \
+       ( [[ "{{ ghcr }}" != "1" ]] || [[ "${github_event}" != "pull_request" ]] ); then
+      ALLOW_CACHE_WRITE="true"
+    fi
+
+    CACHE_NAME="${image_name}"-"${fedora_version}"
+
+    echo "${CACHE_NAME}" "${ALLOW_CACHE_WRITE}"
+
 # # Examples:
 #   > just retag-nvidia-on-ghcr stable-daily stable-daily-41.20250126.3 0
 #   > just retag-nvidia-on-ghcr latest latest-41.20250228.1 0
