@@ -8,13 +8,6 @@ on:
        - "**.md"
        - ".github/workflows/moderator.yml"
        - ".github/workflows/scorecard.yml"
-   push:
-      branches:
-        - beta
-      paths-ignore:
-       - "**.md"
-       - ".github/workflows/moderator.yml"
-       - ".github/workflows/scorecard.yml"
    workflow_call:
    workflow_dispatch:
 
@@ -22,6 +15,8 @@ permissions:
   contents: read
   packages: write
   id-token: write
+  attestations: write
+  artifact-metadata: write
 
 jobs:
   build-image-beta:
