@@ -299,6 +299,8 @@ rechunk $image="aurora" $tag="latest" $flavor="main" ghcr="0" pipeline="0":
       CHUNKED_IMAGE="localhost/"${image_name}":"${DEFAULT_TAG}"-chunked"
     fi
 
+    ${SUDOIF} ${PODMAN} pull ghcr.io/ublue-os/"${image_name}":"${DEFAULT_TAG}"
+
     # 96 layers, conservative default, same what ci-test is using
     # one layer is secretly being added for the ostree export
     # 499 is podman run limit
