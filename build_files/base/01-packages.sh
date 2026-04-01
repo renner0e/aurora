@@ -117,7 +117,6 @@ FEDORA_PACKAGES=(
     pam_yubico
     pamu2fcfg
     plasma-wallpapers-dynamic
-    powerstat
     powertop
     rclone
     restic
@@ -137,31 +136,31 @@ FEDORA_PACKAGES=(
     zsh
 )
 
-# Version-specific Fedora package additions
-case "$FEDORA_MAJOR_VERSION" in
-    43)
-        FEDORA_PACKAGES+=(
-        )
-        ;;
-    44)
-        FEDORA_PACKAGES+=(
-        )
-        ;;
-esac
+FEDORA_PACKAGES_AMD64=(
+    powerstat
+  )
 
 NEGATIVO_PACKAGES=(
     ffmpeg
     ffmpeg-libs
-    intel-vaapi-driver
     libfdk-aac
     libva-utils
     pipewire-libs-extra
     uld
   )
 
-# Install all Fedora packages (bulk - safe from COPR injection)
-echo "Installing ${#FEDORA_PACKAGES[@]} packages from Fedora repos and ${#NEGATIVO_PACKAGES[@]} from Negativo..."
-dnf5 -y install "${FEDORA_PACKAGES[@]}" "${NEGATIVO_PACKAGES[@]}"
+NEGATIVO_PACKAGES_AMD64=(
+    intel-vaapi-driver
+  )
+
+
+PACKAGES=( "${FEDORA_PACKAGES[@]}" "${NEGATIVO_PACKAGES[@]}" )
+
+if [[ $(arch) == x86_64 ]]; then
+  PACKAGES+=( "${FEDORA_PACKAGES_AMD64[@]}" "${NEGATIVO_PACKAGES_AMD64[@]}" )
+fi
+
+dnf5 -y install "${PACKAGES[@]}"
 
 # Install tailscale package from their repo
 echo "Installing tailscale from official repo..."
@@ -178,18 +177,6 @@ copr_install_isolated "ublue-os/packages" \
     "krunner-bazaar" \
     "oversteer-udev" \
     "uupd"
-
-# Version-specific COPR packages
-# Example:
-# copr_install_isolated "ublue-os/packages" "bazaar" "uupd"
-case "$FEDORA_MAJOR_VERSION" in
-    43)
-
-        ;;
-    44)
-
-        ;;
-esac
 
 # kAirpods from ledif/kairpods COPR
 copr_install_isolated "ledif/kairpods" \
