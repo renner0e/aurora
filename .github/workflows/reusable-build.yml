@@ -57,6 +57,10 @@ jobs:
       - name: Mark Directory as Safe
         run: git config --system --add safe.directory "$GITHUB_WORKSPACE"
 
+
+      - name: debug
+        run: podman --version
+
       # mount /mnt as /var/lib/containers
       - name: Mount BTRFS for podman storage
         id: container-storage-action
