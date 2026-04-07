@@ -32,6 +32,9 @@ jobs:
   build_container:
     name: image
     runs-on: ubuntu-24.04
+    container:
+      image: "ghcr.io/ublue-os/devcontainer:latest@sha256:5abc615b0acfb7f89fc7f5d0dd30d755b65508495f36ec6ed0d8412f64f820e7"
+      options: "--privileged --volume /var/lib/containers:/var/lib/containers --security-opt seccomp=unconfined --security-opt label=disable --user 0:0"
     permissions:
       contents: read
       packages: write
@@ -60,11 +63,6 @@ jobs:
           target-dir: /var/lib/containers
           mount-opts: compress-force=zstd:2
           loopback-free: '1'
-
-      - name: Install Just
-        run: |
-          /home/linuxbrew/.linuxbrew/bin/brew install just
-          echo "/home/linuxbrew/.linuxbrew/bin" >> $GITHUB_PATH
 
       - name: Check Just Syntax
         shell: bash
