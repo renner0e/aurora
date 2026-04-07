@@ -162,7 +162,7 @@ jobs:
         env:
           IMAGE: ${{ env.IMAGE_NAME }}
           STREAM_NAME: ${{ matrix.stream_name }}
-          SYFT_CMD: ${{ steps.setup-syft.outputs.cmd }}
+          SYFT_CMD: /usr/bin/syft
           OCI_DIR: "/tmp/image-oci-dir"
         run: |
           mkdir -p ${OCI_DIR}/rootfs
