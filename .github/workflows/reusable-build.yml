@@ -54,6 +54,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
+      - name: Mark Directory as Safe
+        run: git config --system --add safe.directory "$GITHUB_WORKSPACE"
+
       # mount /mnt as /var/lib/containers
       - name: Mount BTRFS for podman storage
         id: container-storage-action
@@ -148,13 +151,6 @@ jobs:
         with:
           path: /var/tmp/buildah-cache-*
           key: ${{ runner.os }}-${{ runner.arch }}-buildah-${{ env.CACHE_NAME }}
-
-      - name: Setup Syft
-        id: setup-syft
-        if: github.event_name != 'pull_request'
-        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0
-        with:
-          syft-version: v1.39.0
 
       - name: Generate SBOM
         if: github.event_name != 'pull_request'
@@ -324,10 +320,6 @@ jobs:
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
           LOWERCASE: ${{ steps.registry_case.outputs.lowercase }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
-
-      - name: Install ORAS
-        if: github.event_name != 'pull_request'
-        uses: oras-project/setup-oras@38de303aac69abb66f3e6255b7198bff35f323e3 # v2.0.0
 
       - name: Login to GitHub Container Registry with ORAS
         if: github.event_name != 'pull_request'
