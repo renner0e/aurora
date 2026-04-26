@@ -134,6 +134,7 @@ FEDORA_PACKAGES=(
     tcpdump
     tesseract-devel
     tmux
+    tesseract-langpack-{eng,deu,fra,spa,por,ita,pol,fin,nld,jpn,jpn_vert,hin,chi_sim,chi_sim_vert,chi_tra,chi_tra_vert}
     traceroute
     vim
     yubikey-manager
@@ -224,9 +225,6 @@ EXCLUDED_PACKAGES=(
     khelpcenter
     krfb
     krfb-libs
-    mariadb
-    mariadb-common
-    mariadb-errmsg
     plasma-discover-kns
     plasma-discover-rpm-ostree
     plasma-welcome-fedora

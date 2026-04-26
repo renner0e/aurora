@@ -147,7 +147,10 @@ build $image="aurora" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pipeline
         {{ just }} verify-container cosign.pub "ghcr.io/ublue-os/akmods-nvidia-open:${akmods_flavor}-${fedora_version}-${kernel_release}"
     fi
 
-    {{ just }} verify-container ghcr.io-get-aurora-dev.pub "ghcr.io/get-aurora-dev/common:latest@${common_image_sha}"
+    cosign verify \
+      --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+      --certificate-identity-regexp="github.com/get-aurora-dev/common/.github/workflows/*" \
+      "ghcr.io/get-aurora-dev/common:latest@${common_image_sha}"
 
     {{ just }} verify-container cosign.pub "ghcr.io/ublue-os/brew:latest@${brew_image_sha}"
 
@@ -692,11 +695,11 @@ tag-images image_name="" default_tag="" tags="":
 
 # DNF CI package cache
 [group('Utility')]
-setup-cache $image="aurora" $tag="latest" $ghcr="0" $github_event="0":
+setup-cache $image="aurora" $tag="latest" $flavor="main" $ghcr="0" $github_event="0":
     #!/usr/bin/bash
     set -eou pipefail
 
-    image_name=$({{ just }} image_name '{{ image }}')
+    image_name=$({{ just }} image_name '{{ image }}' '{{ tag }}' '{{ flavor }}')
     fedora_version=$({{ just }} fedora_version '{{ image }}' '{{ tag }}')
 
     ALLOW_CACHE_WRITE="false"
