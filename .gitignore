@@ -1,14 +1,10 @@
-*.iso
-*.iso-CHECKSUM
-flatpaks_with_deps
-flatpak.*
+*.img
 
 aurora*.oci
 sbom_out
 *.sbom
-previous.manifest.json
+
 changelog.md
 output.env
-version.txt
 
 devcontainer
