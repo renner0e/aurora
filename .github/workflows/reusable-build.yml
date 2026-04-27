@@ -54,6 +54,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
+      - name: Debug
+        run: |
+          podman --version
+          df -h
+
       # mount /mnt as /var/lib/containers
       - name: Mount BTRFS for podman storage
         id: container-storage-action
@@ -222,13 +227,39 @@ jobs:
                             "${DEFAULT_TAG}" \
                             "${MATRIX_IMAGE_FLAVOR}"
 
-      - name: Upload OCI dir as Artifact
+      - name: Upload OCI Archive as Artifact
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
           name: ${{ env.IMAGE_NAME }}.oci
           path: ${{ env.IMAGE_NAME }}.oci
           archive: false
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Create Bootable Image
+        # doing other images is not worth it
+        if: github.event_name == 'pull_request' && matrix.base_name == 'aurora' && matrix.image_flavor == 'main'
+        id: bootc-install
+        env:
+          MATRIX_BASE_NAME: ${{ matrix.base_name }}
+          MATRIX_STREAM_NAME: ${{ matrix.stream_name }}
+          MATRIX_IMAGE_FLAVOR: ${{ matrix.image_flavor }}
+        run: |
+          sudo -E $(command -v just) disk-image "${MATRIX_BASE_NAME}" \
+                             "${MATRIX_STREAM_NAME}" \
+                             "${MATRIX_IMAGE_FLAVOR}" \
+                             1
+
+      - name: Upload Bootable Image as Artifact
+        if: github.event_name == 'pull_request' && steps.bootc-install.outcome == 'success'
+        id: bootc_install_artifact
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
+        with:
+          name: ${{ env.IMAGE_NAME }}-bootable.img
+          path: bootable.img
+          archive: false
+          compression-level: 9
           if-no-files-found: error
           retention-days: 1
 

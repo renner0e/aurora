@@ -56,8 +56,6 @@ fix:
 clean:
     #!/usr/bin/bash
     set -eoux pipefail
-    touch _build
-    find *_build* -exec rm -rf {} \;
     rm -f changelog.md
     rm -f output.env
 
@@ -636,6 +634,49 @@ setup-cache $image="aurora" $tag="latest" $ghcr="0" $github_event="0":
     CACHE_NAME="${BLESSED_IMAGE}-${fedora_version}"
 
     echo "${CACHE_NAME}" "${ALLOW_CACHE_WRITE}"
+
+[group('Utility')]
+[private]
+bootc $image="aurora" $tag="latest" $flavor="main" *ARGS:
+    #!/usr/bin/env bash
+    set -eoux pipefail
+
+    image_name=$({{ just }} image_name {{ image }} {{ tag }} {{ flavor }})
+
+    BOOTC_INSTALL_OPTIONS=()
+    BOOTC_INSTALL_OPTIONS+=("-v" "/var/lib/containers:/var/lib/containers" "-v" "/etc/containers:/etc/containers")
+
+    if [[ -d /sys/fs/selinux ]]; then
+      BOOTC_INSTALL_OPTIONS+=("-v" "/sys/fs/selinux:/sys/fs/selinux" "--security-opt" "label=type:unconfined_t")
+    fi
+
+    podman run \
+        --rm --privileged --pid=host \
+        -it \
+        "${BOOTC_INSTALL_OPTIONS[@]}" \
+        -v /dev:/dev \
+        -v "${BUILD_BASE_DIR:-.}:/data" \
+        localhost/"${image_name}":"${tag}" bootc {{ ARGS }}
+
+# Create bootable image
+[group('Utility')]
+disk-image $image="aurora" $tag="latest" $flavor="main" ghcr="0":
+    #!/usr/bin/env bash
+    set -eoux pipefail
+
+    if [[ "{{ ghcr }}" == "1" ]]; then
+      df -h
+      # aurora-dx is 14.5G
+      SIZE=15G
+    else
+      SIZE=20G
+    fi
+
+    if [ ! -e "${BUILD_BASE_DIR:-.}/bootable.img" ] ; then
+      fallocate -l "${SIZE}" "${BUILD_BASE_DIR:-.}/bootable.img"
+    fi
+
+    {{ just }} bootc "${image}" "${tag}" "${flavor}" install to-disk --generic-image --bootloader grub --via-loopback /data/bootable.img --filesystem btrfs --wipe
 
 # # Examples:
 #   > just retag-nvidia-on-ghcr stable-daily stable-daily-41.20250126.3 0
