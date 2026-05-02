@@ -345,25 +345,43 @@ rechunk $image="aurora" $tag="latest" $flavor="main" ghcr="0" pipeline="0" previ
         sudo -u "${SUDO_USER}" {{ just }} secureboot "${image}" "${tag}" "${flavor}"
     fi
 
-# For Rechunk
+# Copy image to rootfull storage
 [group('Image')]
 load-rootful $image="aurora" $tag="latest" $flavor="main":
     #!/usr/bin/bash
-    set -oux pipefail
+    set -eoux pipefail
 
-    # Validate
     {{ just }} validate {{ image }} {{ tag }} {{ flavor }}
 
-    # Image Name
     image_name=$({{ just }} image_name {{ image }} {{ tag }} {{ flavor }})
 
-    if [[ ! "$(id -u)" == 0 && ! ${PODMAN} =~ docker ]]; then
-      ID=$(${PODMAN} images --filter reference=localhost/"${image_name}":"${tag}" --format "'{{ '{{.ID}}' }}'")
-      if [[ -z "$ID" ]]; then
-          {{ just }} build "$image" "$tag" "$flavor"
-      fi
-      ${PODMAN} image scp localhost/"${image_name}":"${tag}" root@localhost::
+    if [[ "${UID}" -eq "0" ]] || [[ ${PODMAN} =~ docker ]]; then
+        echo "Already root, no need to copy image"
+        exit 0
     fi
+
+    FULL_TAG=localhost/"${image_name}":"${tag}"
+
+    if ! ${PODMAN} image exists "${FULL_TAG}"; then
+        echo "Image ${FULL_TAG} not found in user container storage" >&2
+        exit 1
+    fi
+
+    USER_IMG_ID=$(${PODMAN} images --filter reference="${FULL_TAG}" --format '{{{{.ID}}')
+
+    if [[ -z "${USER_IMG_ID}" ]]; then
+      {{ just }} build "$image" "$tag" "$flavor"
+    fi
+
+    ROOT_IMG_ID=$(${SUDOIF} ${PODMAN} images --filter reference="${FULL_TAG}" --format '{{{{.ID}}' 2>/dev/null || true)
+
+    if [[ "${USER_IMG_ID}" == "${ROOT_IMG_ID}" ]] && [[ -n "${ROOT_IMG_ID}" ]]; then
+        echo "Image "${FULL_TAG}" already exists in root storage with same ID"
+        exit 0
+    fi
+
+    ${PODMAN} save "${FULL_TAG}" | ${SUDOIF} ${PODMAN} load
+    echo "Copied "${FULL_TAG}" to root container storage"
 
 # Generate OCI Archive for PR Testing
 [group('Image')]
