@@ -93,6 +93,7 @@ FEDORA_PACKAGES=(
     htop
     icoutils
     ifuse
+    igt-gpu-tools
     input-remapper
     iwd
     just
