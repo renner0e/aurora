@@ -255,18 +255,6 @@ dnf5 -y swap \
   fwupd fwupd
 
 
-# needs to be removed before we swap the version
-systemctl disable flatpak-add-fedora-repos.service
-
-# TODO: remove me on next flatpak release when preinstall landed in Fedora
-dnf5 -y copr enable ublue-os/flatpak-test
-dnf5 -y copr disable ublue-os/flatpak-test
-dnf5 -y --repo=copr:copr.fedorainfracloud.org:ublue-os:flatpak-test swap flatpak flatpak
-dnf5 -y --repo=copr:copr.fedorainfracloud.org:ublue-os:flatpak-test swap flatpak-libs flatpak-libs
-dnf5 -y --repo=copr:copr.fedorainfracloud.org:ublue-os:flatpak-test swap flatpak-session-helper flatpak-session-helper
-dnf5 -y --repo=copr:copr.fedorainfracloud.org:ublue-os:flatpak-test install flatpak-debuginfo flatpak-libs-debuginfo flatpak-session-helper-debuginfo
-
-
 PLASMA_VERS=$(rpm -q --qf "%{VERSION}" plasma-desktop)
 dnf -y install plasma-firewall-"${PLASMA_VERS}"
 
