@@ -280,15 +280,6 @@ jobs:
                           "${DEFAULT_TAG}" \
                           "${ALIAS_TAGS}"
 
-      # Workaround bug where capital letters in your GitHub username make it impossible to push to GHCR.
-      # https://github.com/macbre/push-to-ghcr/issues/12
-      - name: Lowercase Registry
-        id: registry_case
-        env:
-          IMAGE_REGISTRY: ${{ env.IMAGE_REGISTRY }}
-        run: |
-          echo "lowercase=${IMAGE_REGISTRY,,}" >> $GITHUB_OUTPUT
-
       # TODO: remove me when we have a new podman in 26.04 runners
       # needed because old podman doesn't push layer annotations for
       # the rpm-ostree rechunker at all
@@ -303,6 +294,15 @@ jobs:
           echo ${{ secrets.GITHUB_TOKEN }} | podman login ghcr.io -u ${{ github.actor }} --password-stdin
           echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
+      # Workaround bug where capital letters in your GitHub username make it impossible to push to GHCR.
+      # https://github.com/macbre/push-to-ghcr/issues/12
+      - name: Lowercase Registry
+        if: github.event_name != 'pull_request'
+        env:
+          IMAGE_REGISTRY: ${{ env.IMAGE_REGISTRY }}
+        run: |
+          echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >> $GITHUB_OUTPUT
+
       - name: Push to GHCR
         id: push
         if: github.event_name != 'pull_request'
@@ -310,7 +310,6 @@ jobs:
         env:
           ALIAS_TAGS: ${{ steps.generate-tags.outputs.alias_tags }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
-          LOWERCASE: ${{ steps.registry_case.outputs.lowercase }}
           DEFAULT_TAG: ${{ env.DEFAULT_TAG }}
         with:
           max_attempts: 3
@@ -322,14 +321,14 @@ jobs:
             # TODO: remove me when https://github.com/containers/podman/issues/27796 fixed
 
             for tag in ${ALIAS_TAGS}; do
-              sudo -E /home/linuxbrew/.linuxbrew/bin/podman push --compression-format=zstd --compression-level=3 ${IMAGE_NAME}:${tag} ${LOWERCASE}/${IMAGE_NAME}:${tag}
+              sudo -E /home/linuxbrew/.linuxbrew/bin/podman push --compression-format=zstd --compression-level=3 ${IMAGE_NAME}:${tag} ${IMAGE_REGISTRY}/${IMAGE_NAME}:${tag}
             done
 
             for tag in ${ALIAS_TAGS}; do
-              sudo -E /home/linuxbrew/.linuxbrew/bin/podman push --compression-format=zstd --compression-level=3 ${IMAGE_NAME}:${tag} ${LOWERCASE}/${IMAGE_NAME}:${tag}
+              sudo -E /home/linuxbrew/.linuxbrew/bin/podman push --compression-format=zstd --compression-level=3 ${IMAGE_NAME}:${tag} ${IMAGE_REGISTRY}/${IMAGE_NAME}:${tag}
             done
 
-            digest=$(skopeo inspect docker://${LOWERCASE}/${IMAGE_NAME}:${DEFAULT_TAG} --format '{{.Digest}}')
+            digest=$(skopeo inspect docker://${IMAGE_REGISTRY}/${IMAGE_NAME}:${DEFAULT_TAG} --format '{{.Digest}}')
 
             echo "digest=${digest}" >> $GITHUB_OUTPUT
 
@@ -347,12 +346,11 @@ jobs:
       - name: Sign container image
         if: github.event_name != 'pull_request'
         run: |
-          cosign sign -y --key env://COSIGN_PRIVATE_KEY ${LOWERCASE}/${IMAGE_NAME}@${TAGS}
+          cosign sign -y --key env://COSIGN_PRIVATE_KEY ${IMAGE_REGISTRY}/${IMAGE_NAME}@${TAGS}
         env:
           TAGS: ${{ steps.push.outputs.digest }}
           COSIGN_EXPERIMENTAL: false
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
-          LOWERCASE: ${{ steps.registry_case.outputs.lowercase }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
 
       - name: Install ORAS
@@ -390,11 +388,10 @@ jobs:
         env:
           COSIGN_EXPERIMENTAL: false
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
-          LOWERCASE: ${{ steps.registry_case.outputs.lowercase }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
           SBOM_DIGEST: ${{ steps.upload-sbom.outputs.sbom_digest }}
         run: |
-          cosign sign -y --key env://COSIGN_PRIVATE_KEY ${LOWERCASE}/${IMAGE_NAME}@${SBOM_DIGEST}
+          cosign sign -y --key env://COSIGN_PRIVATE_KEY ${IMAGE_REGISTRY}/${IMAGE_NAME}@${SBOM_DIGEST}
 
       - name: Attestation
         if: github.event_name != 'pull_request'
