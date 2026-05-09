@@ -13,7 +13,6 @@ systemctl enable tailscaled.service
 systemctl enable dconf-update.service
 systemctl enable brew-setup.service
 systemctl enable aurora-groups.service
-systemctl enable usr-share-sddm-themes.mount
 systemctl enable ublue-system-setup.service
 systemctl --global enable ublue-user-setup.service
 systemctl --global enable podman-auto-update.timer
@@ -24,6 +23,10 @@ systemctl enable flatpak-nuke-fedora.service
 
 # TODO: Reinvestigate when bazaar gains dbus activation
 # systemctl --global enable bazaar.service
+
+# see /usr/bin/rechunker-group-fix
+# DO NOT REMOVE THIS
+systemctl enable rechunker-group-fix.service
 
 # run flatpak preinstall once at startup
 systemctl enable flatpak-preinstall.service
@@ -44,8 +47,6 @@ for file in htop nvtop; do
     fi
 done
 
-systemctl disable flatpak-add-fedora-repos.service
-
 # NOTE: With isolated COPR installation, most repos are never enabled globally.
 # We only need to clean up repos that were enabled during the build process.
 
@@ -55,11 +56,6 @@ for repo in fedora-multimedia tailscale fedora-cisco-openh264; do
         sed -i 's@enabled=1@enabled=0@g' "/etc/yum.repos.d/${repo}.repo"
     fi
 done
-
-# Disable hardware:razer repo if it exists
-if [[ -f "/etc/yum.repos.d/hardware:razer.repo" ]]; then
-    sed -i 's@enabled=1@enabled=0@g' /etc/yum.repos.d/hardware:razer.repo
-fi
 
 # Disable Terra repos (installed on F42 and earlier)
 for i in /etc/yum.repos.d/terra*.repo; do

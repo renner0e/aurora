@@ -42,8 +42,8 @@ test -f /usr/share/flatpak/preinstall.d/bazaar.preinstall
 # Make sure this garbage never makes it to an image
 test -f /usr/lib/systemd/system/flatpak-add-fedora-repos.service && false
 
-# Basic smoke test to check if the flatpak version is from our copr
-flatpak preinstall --help
+# Make sure to not pull in the bazzite one
+rpm -q plasma-setup --qf "%{RELEASE}" | grep -q aurora
 
 test -f /usr/share/doc/aurora/aurora.pdf
 test -f /usr/share/homebrew.tar.zst
@@ -53,12 +53,10 @@ desktop-file-validate \
   /usr/share/applications/dev.getaurora.boot-to-windows.desktop \
   /usr/share/applications/dev.getaurora.offline-docs.desktop \
   /usr/share/applications/dev.getaurora.documentation.desktop \
-  /usr/share/applications/dev.getaurora.system-update.desktop \
-  /usr/share/applications/org.gnome.Ptyxis.desktop
+  /usr/share/applications/dev.getaurora.system-update.desktop 
 
 # Check for KDE Plasma version mismatch
 # Fedora Repos have gotten the newer one, trying to upgrade
-# everything except a few packages, breaking SDDM and shell
 
 KDE_VER="$(rpm -q --qf '%{VERSION}' plasma-desktop)"
 # package picked by failures in the past
@@ -89,8 +87,7 @@ IMPORTANT_PACKAGES=(
     pipewire
     plasma-desktop
     podman
-    ptyxis
-    sddm
+    plasma-login-manager
     Sunshine
     systemd
     tailscale
@@ -110,7 +107,7 @@ NEGATIVO=(
     libheif
     libva
     mesa-filesystem
-    mesa-va-drivers
+    mesa-dri-drivers
     pipewire-libs-extra
     x264-libs
     x265-libs
@@ -128,8 +125,7 @@ UNWANTED_PACKAGES=(
     fedora-logos
     fedora-third-party
     firefox
-    plasma-discover-kns
-    plasma-discover-rpm-ostree
+    plasma-discover
     plasma-lookandfeel-fedora
     podman-docker
 )
