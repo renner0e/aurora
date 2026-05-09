@@ -159,10 +159,26 @@ jobs:
           path: /var/tmp/buildah-cache-*
           key: ${{ runner.os }}-${{ runner.arch }}-buildah-${{ env.CACHE_NAME }}-${{ github.run_id }}
 
+      - name: Rechunk Image with rpm-ostree
+        id: rechunker
+        env:
+          MATRIX_BASE_NAME: ${{ matrix.base_name }}
+          MATRIX_STREAM_NAME: ${{ matrix.stream_name }}
+          MATRIX_IMAGE_FLAVOR: ${{ matrix.image_flavor }}
+          DEFAULT_TAG: ${{ env.DEFAULT_TAG }}
+          PREVIOUS_BUILD: ${{ github.event.inputs.previous_build || '1' }}
+        run: |
+          sudo -E $(command -v just) rechunk "${MATRIX_BASE_NAME}" \
+                            "${MATRIX_STREAM_NAME}" \
+                            "${MATRIX_IMAGE_FLAVOR}" \
+                            "1" \
+                            "0" \
+                            "${PREVIOUS_BUILD}"
+
       - name: Setup Syft
         id: setup-syft
         if: github.event_name != 'pull_request'
-        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
           syft-version: v1.39.0
 
@@ -187,21 +203,6 @@ jobs:
           echo "SBOM=${SBOM}" >> $GITHUB_OUTPUT
           sudo rm -rf ${OCI_DIR}
 
-      - name: Rechunk Image with rpm-ostree
-        id: rechunker
-        env:
-          MATRIX_BASE_NAME: ${{ matrix.base_name }}
-          MATRIX_STREAM_NAME: ${{ matrix.stream_name }}
-          MATRIX_IMAGE_FLAVOR: ${{ matrix.image_flavor }}
-          DEFAULT_TAG: ${{ env.DEFAULT_TAG }}
-          PREVIOUS_BUILD: ${{ github.event.inputs.previous_build || '1' }}
-        run: |
-          sudo -E $(command -v just) rechunk "${MATRIX_BASE_NAME}" \
-                            "${MATRIX_STREAM_NAME}" \
-                            "${MATRIX_IMAGE_FLAVOR}" \
-                            "1" \
-                            "0" \
-                            "${PREVIOUS_BUILD}"
 
       - name: Secureboot Check
         id: secureboot

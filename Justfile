@@ -56,10 +56,9 @@ fix:
 clean:
     #!/usr/bin/bash
     set -eoux pipefail
-    touch _build
-    find *_build* -exec rm -rf {} \;
     rm -f changelog.md
     rm -f output.env
+    rm -rf sbom_out
 
 # Check if valid combo
 [group('Utility')]
@@ -611,6 +610,32 @@ tag-images image_name="" default_tag="" tags="":
 
     # Show Images
     ${PODMAN} images
+
+# Extract Container and generate SBOM
+[group('Utility')]
+gen-sbom $image="aurora" $tag="latest" $flavor="main" ghcr="0":
+    #!/usr/bin/bash
+    set -eoux pipefail
+
+    image_name=$({{ just }} image_name '{{ image }}' '{{ tag }}' '{{ flavor }}')
+
+    OUT_DIR="sbom_out/${image_name}"
+    mkdir -p "${OUT_DIR}"
+
+    ${PODMAN} container create --replace --name ${image_name} "${image_name}:${tag}"
+
+    ROOTFS="${OUT_DIR}/rootfs"
+    mkdir -p "${ROOTFS}"
+
+    ${PODMAN} export ${image_name} | tar -C "${ROOTFS}" -xf -
+    ${PODMAN} container rm ${image_name}
+
+    SBOM="${OUT_DIR}/sbom.json"
+
+    syft --source-name "${image_name}:${tag}" "${OUT_DIR}" -o syft-json=${SBOM}
+    du -sh "${SBOM}"
+
+    rm -rf "${ROOTFS}"
 
 # DNF CI package cache
 [group('Utility')]
