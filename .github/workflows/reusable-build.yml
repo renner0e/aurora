@@ -180,7 +180,7 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
-          syft-version: v1.39.0
+          syft-version: v1.44.0
 
       - name: Generate SBOM
         if: github.event_name != 'pull_request'
@@ -190,10 +190,12 @@ jobs:
           MATRIX_STREAM_NAME: ${{ matrix.stream_name }}
           MATRIX_IMAGE_FLAVOR: ${{ matrix.image_flavor }}
           DEFAULT_TAG: ${{ env.DEFAULT_TAG }}
+          SYFT_CMD: ${{ steps.setup-syft.outputs.cmd }}
         run: |
           sudo -E $(command -v just) gen-sbom "${MATRIX_BASE_NAME}" \
                             "${MATRIX_STREAM_NAME}" \
-                            "${MATRIX_IMAGE_FLAVOR}"
+                            "${MATRIX_IMAGE_FLAVOR}" \
+                            "${SYFT_CMD}"
 
       - name: Secureboot Check
         id: secureboot

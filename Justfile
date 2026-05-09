@@ -614,7 +614,7 @@ tag-images image_name="" default_tag="" tags="":
 
 # Extract Container and generate SBOM
 [group('Utility')]
-gen-sbom $image="aurora" $tag="latest" $flavor="main" ghcr="0":
+gen-sbom $image="aurora" $tag="latest" $flavor="main" $syft_cmd="syft":
     #!/usr/bin/bash
     set -eoux pipefail
 
@@ -633,7 +633,7 @@ gen-sbom $image="aurora" $tag="latest" $flavor="main" ghcr="0":
 
     SBOM="${OUT_DIR}/sbom.json"
 
-    syft --source-name "${image_name}:${tag}" "${OUT_DIR}" -o syft-json=${SBOM}
+    ${syft_cmd} --source-name "${image_name}:${tag}" "${OUT_DIR}" -o syft-json=${SBOM}
     du -sh "${SBOM}"
 
     rm -rf "${ROOTFS}"
