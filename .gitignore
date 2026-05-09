@@ -4,6 +4,8 @@ flatpaks_with_deps
 flatpak.*
 
 aurora*.oci
+sbom_out
+*.sbom
 previous.manifest.json
 changelog.md
 output.env
