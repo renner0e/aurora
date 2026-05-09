@@ -193,7 +193,7 @@ jobs:
         run: |
           sudo -E $(command -v just) gen-sbom "${MATRIX_BASE_NAME}" \
                             "${MATRIX_STREAM_NAME}" \
-                            "${MATRIX_IMAGE_FLAVOR}
+                            "${MATRIX_IMAGE_FLAVOR}"
 
       - name: Secureboot Check
         id: secureboot
