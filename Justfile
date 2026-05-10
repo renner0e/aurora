@@ -204,20 +204,21 @@ build $image="aurora" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pipeline
 
     # Labels
     LABELS=()
-    LABELS+=("--label" "org.opencontainers.image.title=${image_name}")
-    LABELS+=("--label" "org.opencontainers.image.version=${ver}")
-    LABELS+=("--label" "ostree.linux=${kernel_release}")
-    LABELS+=("--label" "io.artifacthub.package.readme-url=https://raw.githubusercontent.com/ublue-os/aurora/refs/heads/main/README.md")
-    LABELS+=("--label" "io.artifacthub.package.logo-url=https://avatars.githubusercontent.com/u/120078124?s=200&v=4")
-    LABELS+=("--label" "org.opencontainers.image.description=The ultimate productivity workstation")
     LABELS+=("--label" "containers.bootc=1")
+    LABELS+=("--label" "io.artifacthub.package.deprecated=false")
+    LABELS+=("--label" "io.artifacthub.package.keywords=bootc,fedora,aurora,ublue,universal-blue,kde,linux")
+    LABELS+=("--label" "io.artifacthub.package.logo-url=https://avatars.githubusercontent.com/u/120078124?s=200&v=4")
+    LABELS+=("--label" "io.artifacthub.package.maintainers=[{\"name\": \"NiHaiden\", \"email\": \"me@nhaiden.io\"}]")
+    LABELS+=("--label" "io.artifacthub.package.readme-url=https://raw.githubusercontent.com/ublue-os/aurora/refs/heads/main/README.md")
     LABELS+=("--label" "org.opencontainers.image.created=$(date -u +%Y\-%m\-%d\T%H\:%M\:%S\Z)")
-    LABELS+=("--label" "org.opencontainers.image.source=https://raw.githubusercontent.com/ublue-os/aurora/refs/heads/main/Containerfile")
+    LABELS+=("--label" "org.opencontainers.image.description=The ultimate productivity workstation")
+    LABELS+=("--label" "org.opencontainers.image.documentation=https://docs.getaurora.dev")
+    LABELS+=("--label" "org.opencontainers.image.source=https://raw.githubusercontent.com/ublue-os/aurora/refs/heads/main/Containerfile.in")
+    LABELS+=("--label" "org.opencontainers.image.title=${image_name}")
     LABELS+=("--label" "org.opencontainers.image.url=https://getaurora.dev")
     LABELS+=("--label" "org.opencontainers.image.vendor={{ repo_organization }}")
-    LABELS+=("--label" "io.artifacthub.package.deprecated=false")
-    LABELS+=("--label" "io.artifacthub.package.keywords=bootc,fedora,aurora,ublue,universal-blue")
-    LABELS+=("--label" "io.artifacthub.package.maintainers=[{\"name\": \"NiHaiden\", \"email\": \"me@nhaiden.io\"}]")
+    LABELS+=("--label" "org.opencontainers.image.version=${ver}")
+    LABELS+=("--label" "ostree.linux=${kernel_release}")
 
     echo "::endgroup::"
 
