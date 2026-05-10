@@ -1,6 +1,18 @@
 version: "1"
 rules:
   - base: main
-    upstream: renner0e:main
-    mergeMethod: merge
+    upstream: testing
+    mergeMethod: hardreset
     mergeUnstable: false
+    reviewers:
+      - nihaiden
+      - inffy
+      - ledif
+      - renner0e
+    conflictReviewers:
+      - nihaiden
+      - inffy
+      - ledif
+      - renner0e
+label: "promotion"
+conflictLabel: "promotion-conflict"
