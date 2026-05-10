@@ -150,7 +150,6 @@ fi
 if [[ ${AKMODS_FLAVOR} =~ coreos ]]; then
   ZFS_PACKAGES=(
       kmod-zfs
-      libzfs6
       zfs
       python3-pyzfs
 )
