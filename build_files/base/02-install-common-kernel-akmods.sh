@@ -4,16 +4,10 @@ echo "::group:: ===$(basename "$0")==="
 
 set -eoux pipefail
 
-# Remove Existing Kernel
-for pkg in kernel kernel{-core,-modules,-modules-core,-modules-extra,-tools-libs,-tools}; do
-    rpm --erase "${pkg}" --nodeps
-done
-
-# cleanup leftovers that are not covered by kernel-* packages for some reason
-rm -rf /usr/lib/modules
-
 # Install Kernel
-dnf5 -y install \
+dnf -y do \
+    --action=remove kernel{-core,-modules,-modules-core,-modules-extra,-tools-libs,-tools} \
+    --action=install \
     /tmp/kernel-rpms/kernel-[0-9]*.rpm \
     /tmp/kernel-rpms/kernel-core-*.rpm \
     /tmp/kernel-rpms/kernel-modules-*.rpm
@@ -24,9 +18,7 @@ fi
 
 dnf5 versionlock add kernel kernel-devel kernel-devel-matched kernel-core kernel-modules kernel-modules-core kernel-modules-extra
 
-dnf -y install /tmp/rpms/{common,kmods}/*xone*.rpm || true
-
-dnf -y install /tmp/rpms/{kmods,common}/*v4l2loopback*.rpm || true
+dnf -y install /tmp/rpms/{common,kmods}/*xone*.rpm /tmp/rpms/{kmods,common}/*v4l2loopback*.rpm
 
 mkdir -p /etc/pki/akmods/certs
 ghcurl "https://github.com/ublue-os/akmods/raw/refs/heads/main/certs/public_key.der" --retry 3 -Lo /etc/pki/akmods/certs/akmods-ublue.der
