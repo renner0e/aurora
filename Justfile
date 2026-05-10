@@ -204,20 +204,21 @@ build $image="aurora" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pipeline
 
     # Labels
     LABELS=()
-    LABELS+=("--label" "org.opencontainers.image.title=${image_name}")
-    LABELS+=("--label" "org.opencontainers.image.version=${ver}")
-    LABELS+=("--label" "ostree.linux=${kernel_release}")
-    LABELS+=("--label" "io.artifacthub.package.readme-url=https://raw.githubusercontent.com/ublue-os/aurora/refs/heads/main/README.md")
-    LABELS+=("--label" "io.artifacthub.package.logo-url=https://avatars.githubusercontent.com/u/120078124?s=200&v=4")
-    LABELS+=("--label" "org.opencontainers.image.description=The ultimate productivity workstation")
     LABELS+=("--label" "containers.bootc=1")
+    LABELS+=("--label" "io.artifacthub.package.deprecated=false")
+    LABELS+=("--label" "io.artifacthub.package.keywords=bootc,fedora,aurora,ublue,universal-blue,kde,linux")
+    LABELS+=("--label" "io.artifacthub.package.logo-url=https://avatars.githubusercontent.com/u/120078124?s=200&v=4")
+    LABELS+=("--label" "io.artifacthub.package.maintainers=[{\"name\": \"NiHaiden\", \"email\": \"me@nhaiden.io\"}]")
+    LABELS+=("--label" "io.artifacthub.package.readme-url=https://raw.githubusercontent.com/ublue-os/aurora/refs/heads/main/README.md")
     LABELS+=("--label" "org.opencontainers.image.created=$(date -u +%Y\-%m\-%d\T%H\:%M\:%S\Z)")
-    LABELS+=("--label" "org.opencontainers.image.source=https://raw.githubusercontent.com/ublue-os/aurora/refs/heads/main/Containerfile")
+    LABELS+=("--label" "org.opencontainers.image.description=The ultimate productivity workstation")
+    LABELS+=("--label" "org.opencontainers.image.documentation=https://docs.getaurora.dev")
+    LABELS+=("--label" "org.opencontainers.image.source=https://raw.githubusercontent.com/ublue-os/aurora/refs/heads/main/Containerfile.in")
+    LABELS+=("--label" "org.opencontainers.image.title=${image_name}")
     LABELS+=("--label" "org.opencontainers.image.url=https://getaurora.dev")
     LABELS+=("--label" "org.opencontainers.image.vendor={{ repo_organization }}")
-    LABELS+=("--label" "io.artifacthub.package.deprecated=false")
-    LABELS+=("--label" "io.artifacthub.package.keywords=bootc,fedora,aurora,ublue,universal-blue")
-    LABELS+=("--label" "io.artifacthub.package.maintainers=[{\"name\": \"NiHaiden\", \"email\": \"me@nhaiden.io\"}]")
+    LABELS+=("--label" "org.opencontainers.image.version=${ver}")
+    LABELS+=("--label" "ostree.linux=${kernel_release}")
 
     echo "::endgroup::"
 
@@ -275,7 +276,6 @@ build-pipeline image="aurora" tag="latest" flavor="main" kernel_pin="":
 
 # Rechunk Image
 [group('Image')]
-[private]
 rechunk $image="aurora" $tag="latest" $flavor="main" ghcr="0" pipeline="0" previous_build="0":
     #!/usr/bin/bash
 
@@ -344,6 +344,28 @@ rechunk $image="aurora" $tag="latest" $flavor="main" ghcr="0" pipeline="0" previ
     if [[ {{ pipeline }} == "1" && -n "${SUDO_USER:-}" ]]; then
         sudo -u "${SUDO_USER}" {{ just }} secureboot "${image}" "${tag}" "${flavor}"
     fi
+
+# Rechunk Image but cooler
+[group('Image')]
+chunkah $image="aurora" $tag="latest" $flavor="main" ghcr="0":
+    #!/usr/bin/bash
+    set -oeux pipefail
+
+    {{ just }} validate {{ image }} {{ tag }} {{ flavor }}
+
+    image_name=$({{ just }} image_name {{ image }} {{ tag }} {{ flavor }})
+    DEFAULT_TAG=$({{ just }} generate-default-tag {{ tag }} {{ ghcr }})
+
+    export CHUNKAH_CONFIG_STR=$(${PODMAN} inspect "${image_name}:${DEFAULT_TAG}")
+    ${PODMAN} run --rm --mount=type=image,src="${image_name}:${DEFAULT_TAG}",target=/chunkah \
+    -e RUST_LOG=debug \
+    -e CHUNKAH_CONFIG_STR quay.io/coreos/chunkah:dev \
+    build \
+    --compressed \
+    --max-layers 128 \
+    --prune /sysroot/ \
+    --label ostree.commit- --label ostree.final-diffid- \
+    --tag "${image_name}:${DEFAULT_TAG}" | ${PODMAN} load
 
 # For Rechunk
 [group('Image')]
