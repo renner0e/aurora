@@ -274,7 +274,6 @@ build-pipeline image="aurora" tag="latest" flavor="main" kernel_pin="":
 
 # Rechunk Image
 [group('Image')]
-[private]
 rechunk $image="aurora" $tag="latest" $flavor="main" ghcr="0" pipeline="0" previous_build="0":
     #!/usr/bin/bash
 
@@ -343,6 +342,28 @@ rechunk $image="aurora" $tag="latest" $flavor="main" ghcr="0" pipeline="0" previ
     if [[ {{ pipeline }} == "1" && -n "${SUDO_USER:-}" ]]; then
         sudo -u "${SUDO_USER}" {{ just }} secureboot "${image}" "${tag}" "${flavor}"
     fi
+
+# Rechunk Image but cooler
+[group('Image')]
+chunkah $image="aurora" $tag="latest" $flavor="main" ghcr="0":
+    #!/usr/bin/bash
+    set -oeux pipefail
+
+    {{ just }} validate {{ image }} {{ tag }} {{ flavor }}
+
+    image_name=$({{ just }} image_name {{ image }} {{ tag }} {{ flavor }})
+    DEFAULT_TAG=$({{ just }} generate-default-tag {{ tag }} {{ ghcr }})
+
+    export CHUNKAH_CONFIG_STR=$(${PODMAN} inspect "${image_name}:${DEFAULT_TAG}")
+    ${PODMAN} run --rm --mount=type=image,src="${image_name}:${DEFAULT_TAG}",target=/chunkah \
+    -e RUST_LOG=debug \
+    -e CHUNKAH_CONFIG_STR quay.io/coreos/chunkah:dev \
+    build \
+    --compressed \
+    --max-layers 128 \
+    --prune /sysroot/ \
+    --label ostree.commit- --label ostree.final-diffid- \
+    --tag "${image_name}:${DEFAULT_TAG}" | ${PODMAN} load
 
 # For Rechunk
 [group('Image')]
