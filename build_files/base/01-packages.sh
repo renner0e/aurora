@@ -247,15 +247,6 @@ if [[ "${#EXCLUDED_PACKAGES[@]}" -gt 0 ]]; then
     fi
 fi
 
-# https://github.com/ublue-os/bazzite/issues/1400
-# TODO: test if we still need this when upgrading firmware with fwupd
-dnf -y copr enable ublue-os/staging
-dnf -y copr disable ublue-os/staging
-dnf5 -y swap \
-  --repo=copr:copr.fedorainfracloud.org:ublue-os:staging \
-  fwupd fwupd
-
-
 PLASMA_VERS=$(rpm -q --qf "%{VERSION}" plasma-desktop)
 dnf -y install plasma-firewall-"${PLASMA_VERS}"
 
