@@ -17,7 +17,7 @@ flavors := '(
 tags := '(
     [stable]=stable
     [latest]=latest
-    [beta]=beta
+    [testing]=testing
 )'
 export SUDO_DISPLAY := if `if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then echo true; fi` == "true" { "true" } else { "false" }
 export SUDOIF := if `id -u` == "0" { "" } else { "sudo" }
@@ -113,8 +113,8 @@ build $image="aurora" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pipeline
     # AKMODS Flavor and Kernel Version
     if [[ "${tag}" =~ stable ]]; then
         akmods_flavor="coreos-stable"
-    elif [[ "${tag}" =~ beta ]]; then
-        akmods_flavor="main"
+    elif [[ "${tag}" =~ testing ]]; then
+        akmods_flavor="coreos-testing"
     else
         akmods_flavor="main"
     fi
@@ -224,6 +224,7 @@ build $image="aurora" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pipeline
 
     case "${akmods_flavor}" in
     "coreos-stable") BUILD_ARGS+=("--cpp-flag=-DZFS") ;;
+    "coreos-testing") BUILD_ARGS+=("--cpp-flag=-DZFS") ;;
     esac
 
     if [[ "${image_name}" =~ nvidia ]]; then
