@@ -335,7 +335,7 @@ rechunk $image="aurora" $tag="latest" $flavor="main" ghcr="0" pipeline="0" previ
 
     # rename the image to localhost
     if [[ "{{ ghcr }}" == "1" && "{{ previous_build }}" == "1" ]]; then
-      ${SUDOIF} ${PODMAN} tag ${CHUNKED_IMAGE} "localhost/"${image_name}":"${tag}""
+      ${SUDOIF} ${PODMAN} tag ${CHUNKED_IMAGE} "localhost/"${image_name}":"${DEFAULT_TAG}""
       ${SUDOIF} ${PODMAN} image rm -f ${CHUNKED_IMAGE}
     fi
 
