@@ -5,7 +5,7 @@ export common_image := env("COMMON_IMAGE", "ghcr.io/get-aurora-dev/common:latest
 export brew_image := env("BREW_IMAGE", "ghcr.io/ublue-os/brew:latest")
 stable_version := "44"
 latest_version := "44"
-beta_version := "44"
+testing_version := "44"
 images := '(
     [aurora]=aurora
     [aurora-dx]=aurora-dx
@@ -224,7 +224,6 @@ build $image="aurora" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pipeline
 
     case "${akmods_flavor}" in
     "coreos-stable") BUILD_ARGS+=("--cpp-flag=-DZFS") ;;
-    "coreos-testing") BUILD_ARGS+=("--cpp-flag=-DZFS") ;;
     esac
 
     if [[ "${image_name}" =~ nvidia ]]; then
@@ -518,8 +517,8 @@ fedora_version image="aurora" tag="latest" flavor="main" $kernel_pin="":
     # Determine Version
     if [[ "{{ tag }}" =~ stable ]]; then
         VERSION="{{ stable_version }}"
-    elif [[ "{{ tag }}" =~ beta ]]; then
-        VERSION="{{ beta_version }}"
+    elif [[ "{{ tag }}" =~ testing ]]; then
+        VERSION="{{ testing_version }}"
     else
         VERSION="{{ latest_version }}"
     fi
@@ -587,7 +586,7 @@ generate-build-tags image="aurora" tag="latest" flavor="main" kernel_pin="" ghcr
         BUILD_TAGS+=("stable" "stable-${version}" "stable-${version:3}")
     elif [[ "{{ tag }}" =~ "stable" && "{{ ghcr }}" == "0" ]]; then
         BUILD_TAGS+=("stable" "stable-${version}" "stable-${version:3}")
-    elif [[ ! "{{ tag }}" =~ stable|beta ]]; then
+    elif [[ ! "{{ tag }}" =~ stable|testing ]]; then
         BUILD_TAGS+=("${FEDORA_VERSION}" "${FEDORA_VERSION}-${version}" "${FEDORA_VERSION}-${version:3}")
     fi
 
