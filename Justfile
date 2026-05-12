@@ -349,7 +349,6 @@ chunkah $image="aurora" $tag="latest" $flavor="main" ghcr="0":
 
     export CHUNKAH_CONFIG_STR=$(${PODMAN} inspect "${image_name}:${tag}")
     ${PODMAN} run --rm --mount=type=image,src="${image_name}:${tag}",target=/chunkah \
-    -e RUST_LOG=debug \
     -e CHUNKAH_CONFIG_STR quay.io/coreos/chunkah:dev \
     build \
     --compressed \
@@ -535,14 +534,14 @@ image_name image="aurora" tag="latest" flavor="main":
 [group('Utility')]
 generate-build-tags image="aurora" tag="latest" flavor="main" kernel_pin="" ghcr="0" $version="" github_event="" github_number="":
     #!/usr/bin/bash
-    set -eou pipefail
+    set -eoux pipefail
 
     if [[ {{ ghcr }} == "0" ]]; then
         rm -f /tmp/manifest.json
     fi
     FEDORA_VERSION="$({{ just }} fedora_version '{{ image }}' '{{ tag }}' '{{ flavor }}' '{{ kernel_pin }}')"
     IMAGE_NAME=$({{ just }} image_name {{ image }} {{ tag }} {{ flavor }})
-    # Use Build Version from Rechunk
+
     if [[ -z "${version:-}" ]]; then
         version="{{ tag }}-${FEDORA_VERSION}.$(date +%Y%m%d)"
     fi
@@ -570,6 +569,9 @@ generate-build-tags image="aurora" tag="latest" flavor="main" kernel_pin="" ghcr
     # Weekly Stable / Rebuild Stable on workflow_dispatch
     # TODO: remove stable-daily dance here, make sure compatibility tag with :stable works
     github_event="{{ github_event }}"
+
+    
+
     if [[ "{{ tag }}" =~ "stable" && "${WEEKLY}" == "${TODAY}" && "${github_event}" =~ schedule ]]; then
         BUILD_TAGS+=("stable" "stable-${version}" "stable-${version:3}")
     elif [[ "{{ tag }}" =~ "stable" && "${github_event}" =~ workflow_dispatch|workflow_call ]]; then
