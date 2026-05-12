@@ -4,7 +4,7 @@
     "config:best-practices"
   ],
 
-  "baseBranchPatterns": ["main", "beta"],
+  "baseBranchPatterns": ["main"],
 
   // Do not rebase when the default branch is updated
   "rebaseWhen": "never",
@@ -33,7 +33,7 @@
     },
     {
       "matchUpdateTypes": ["pin", "digest", "pinDigest"],
-      "matchPackageNames": ["ghcr.io/jasonn3/build-container-installer", "ghcr.io/hhd-dev/rechunk"],
+      "matchPackageNames": ["ghcr.io/jasonn3/build-container-installer"],
       "automerge": false
     },
     {

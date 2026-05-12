@@ -18,6 +18,9 @@ on:
       kernel_pin:
         description: "The full kernel version to pin"
         type: string
+      previous_build:
+        description: 'Set a reference to a previous build to make updates smaller'
+        type: string
 
 env:
   IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
@@ -156,59 +159,41 @@ jobs:
           path: /var/tmp/buildah-cache-*
           key: ${{ runner.os }}-${{ runner.arch }}-buildah-${{ env.CACHE_NAME }}-${{ github.run_id }}
 
+      - name: Rechunk Image with rpm-ostree
+        id: rechunker
+        env:
+          MATRIX_BASE_NAME: ${{ matrix.base_name }}
+          MATRIX_STREAM_NAME: ${{ matrix.stream_name }}
+          MATRIX_IMAGE_FLAVOR: ${{ matrix.image_flavor }}
+          DEFAULT_TAG: ${{ env.DEFAULT_TAG }}
+          PREVIOUS_BUILD: ${{ github.event.inputs.previous_build || '1' }}
+        run: |
+          sudo -E $(command -v just) rechunk "${MATRIX_BASE_NAME}" \
+                            "${MATRIX_STREAM_NAME}" \
+                            "${MATRIX_IMAGE_FLAVOR}" \
+                            "1" \
+                            "0" \
+                            "${PREVIOUS_BUILD}"
+
       - name: Setup Syft
         id: setup-syft
         if: github.event_name != 'pull_request'
-        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0
-        with:
-          syft-version: v1.39.0
+        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
 
       - name: Generate SBOM
         if: github.event_name != 'pull_request'
         id: generate-sbom
         env:
-          IMAGE: ${{ env.IMAGE_NAME }}
-          STREAM_NAME: ${{ matrix.stream_name }}
-          SYFT_CMD: ${{ steps.setup-syft.outputs.cmd }}
-          OCI_DIR: "/tmp/image-oci-dir"
-        run: |
-          mkdir -p ${OCI_DIR}/rootfs
-          sudo podman container create --replace --name "${IMAGE}" "localhost/${IMAGE}:${STREAM_NAME}"
-          sudo podman export "${IMAGE}" | sudo tar -C ${OCI_DIR}/rootfs -xf -
-          sudo podman container rm "${IMAGE}"
-
-          SBOM="$(mktemp -d)/sbom.json"
-          export SYFT_PARALLELISM=$(($(nproc)*2))
-          sudo $SYFT_CMD --source-name "${IMAGE}"-"${STREAM_NAME}" ${OCI_DIR} -o syft-json=${SBOM}
-          du -sh ${SBOM}
-          echo "SBOM=${SBOM}" >> $GITHUB_OUTPUT
-          sudo rm -rf ${OCI_DIR}
-
-      - name: Rechunk Image
-        id: rechunk-image
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MATRIX_BASE_NAME: ${{ matrix.base_name }}
           MATRIX_STREAM_NAME: ${{ matrix.stream_name }}
           MATRIX_IMAGE_FLAVOR: ${{ matrix.image_flavor }}
+          DEFAULT_TAG: ${{ env.DEFAULT_TAG }}
+          SYFT_CMD: ${{ steps.setup-syft.outputs.cmd }}
         run: |
-          sudo -E $(command -v just) rechunk "${MATRIX_BASE_NAME}" \
+          sudo -E $(command -v just) gen-sbom "${MATRIX_BASE_NAME}" \
                             "${MATRIX_STREAM_NAME}" \
                             "${MATRIX_IMAGE_FLAVOR}" \
-                            "1"
-
-      - name: Load Image into Podman
-        id: load-rechunk
-        shell: bash
-        env:
-          MATRIX_BASE_NAME: ${{ matrix.base_name }}
-          DEFAULT_TAG: ${{ env.DEFAULT_TAG }}
-          MATRIX_IMAGE_FLAVOR: ${{ matrix.image_flavor }}
-        run: |
-          sudo -E $(command -v just) load-rechunk "${MATRIX_BASE_NAME}" \
-                            "${DEFAULT_TAG}" \
-                            "${MATRIX_IMAGE_FLAVOR}"
+                            "${SYFT_CMD}"
 
       - name: Secureboot Check
         id: secureboot
@@ -221,6 +206,39 @@ jobs:
           sudo -E $(command -v just) secureboot "${MATRIX_BASE_NAME}" \
                             "${DEFAULT_TAG}" \
                             "${MATRIX_IMAGE_FLAVOR}"
+
+      - name: Export to OCI Archive
+        if: github.event_name == 'pull_request'
+        id: oci-archive
+        env:
+          MATRIX_BASE_NAME: ${{ matrix.base_name }}
+          DEFAULT_TAG: ${{ env.DEFAULT_TAG }}
+          MATRIX_IMAGE_FLAVOR: ${{ matrix.image_flavor }}
+        run: |
+          sudo -E $(command -v just) export-oci "${MATRIX_BASE_NAME}" \
+                            "${DEFAULT_TAG}" \
+                            "${MATRIX_IMAGE_FLAVOR}"
+
+      - name: Upload OCI Archive as Artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ env.IMAGE_NAME }}.oci
+          path: ${{ env.IMAGE_NAME }}.oci
+          archive: false
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: PR Testing Instructions
+        if: github.event_name == 'pull_request'
+        id: pr-summary
+        env:
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          MATRIX_STREAM_NAME: "${{ matrix.stream_name }}"
+        run: |
+          echo "Download the .oci file" >> $GITHUB_STEP_SUMMARY
+          echo "Rebase: sudo bootc switch --transport oci-archive /path/to/${IMAGE_NAME}".oci >> $GITHUB_STEP_SUMMARY
+          echo "Go back to the production image e.g.: sudo bootc switch --enforce-container-sigpolicy ghcr.io/ublue-os/${IMAGE_NAME}:${MATRIX_STREAM_NAME}" >> $GITHUB_STEP_SUMMARY
 
       - name: Generate tags
         id: generate-tags
@@ -262,20 +280,28 @@ jobs:
                           "${DEFAULT_TAG}" \
                           "${ALIAS_TAGS}"
 
-      # Workaround bug where capital letters in your GitHub username make it impossible to push to GHCR.
-      # https://github.com/macbre/push-to-ghcr/issues/12
-      - name: Lowercase Registry
-        id: registry_case
-        env:
-          IMAGE_REGISTRY: ${{ env.IMAGE_REGISTRY }}
+      # TODO: remove me when we have a new podman in 26.04 runners
+      # needed because old podman doesn't push layer annotations for
+      # the rpm-ostree rechunker at all
+      - name: install podman from brew
+        if: github.event_name != 'pull_request'
         run: |
-          echo "lowercase=${IMAGE_REGISTRY,,}" >> $GITHUB_OUTPUT
+          /home/linuxbrew/.linuxbrew/bin/brew install podman
 
       - name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request'
         run: |
           echo ${{ secrets.GITHUB_TOKEN }} | podman login ghcr.io -u ${{ github.actor }} --password-stdin
           echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      # Workaround bug where capital letters in your GitHub username make it impossible to push to GHCR.
+      # https://github.com/macbre/push-to-ghcr/issues/12
+      - name: Lowercase Registry
+        if: github.event_name != 'pull_request'
+        env:
+          IMAGE_REGISTRY: ${{ env.IMAGE_REGISTRY }}
+        run: |
+          echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >> $GITHUB_OUTPUT
 
       - name: Push to GHCR
         id: push
@@ -284,7 +310,6 @@ jobs:
         env:
           ALIAS_TAGS: ${{ steps.generate-tags.outputs.alias_tags }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
-          LOWERCASE: ${{ steps.registry_case.outputs.lowercase }}
           DEFAULT_TAG: ${{ env.DEFAULT_TAG }}
         with:
           max_attempts: 3
@@ -292,23 +317,20 @@ jobs:
           timeout_minutes: 10
           command: |
             set -euox pipefail
+            # HACK: push a second time so layer annotations are pushed
+            # TODO: remove me when https://github.com/containers/podman/issues/27796 fixed
 
             for tag in ${ALIAS_TAGS}; do
-              sudo -E podman push ${IMAGE_NAME}:${tag} ${LOWERCASE}/${IMAGE_NAME}:${tag}
+              sudo -E /home/linuxbrew/.linuxbrew/bin/podman push --compression-format=zstd --compression-level=3 ${IMAGE_NAME}:${tag} ${IMAGE_REGISTRY}/${IMAGE_NAME}:${tag}
             done
 
-            digest=$(skopeo inspect docker://${LOWERCASE}/${IMAGE_NAME}:${DEFAULT_TAG} --format '{{.Digest}}')
+            for tag in ${ALIAS_TAGS}; do
+              sudo -E /home/linuxbrew/.linuxbrew/bin/podman push --compression-format=zstd --compression-level=3 ${IMAGE_NAME}:${tag} ${IMAGE_REGISTRY}/${IMAGE_NAME}:${tag}
+            done
+
+            digest=$(skopeo inspect docker://${IMAGE_REGISTRY}/${IMAGE_NAME}:${DEFAULT_TAG} --format '{{.Digest}}')
 
             echo "digest=${digest}" >> $GITHUB_OUTPUT
-
-      - name: Upload OCI dir as Artifact
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ${{ env.IMAGE_NAME }}.oci
-          path: ${{ env.IMAGE_NAME }}_build
-          if-no-files-found: error
-          retention-days: 1
 
       - name: PR Testing Instructions
         if: github.event_name == 'pull_request'
@@ -324,12 +346,11 @@ jobs:
       - name: Sign container image
         if: github.event_name != 'pull_request'
         run: |
-          cosign sign -y --key env://COSIGN_PRIVATE_KEY ${LOWERCASE}/${IMAGE_NAME}@${TAGS}
+          cosign sign -y --key env://COSIGN_PRIVATE_KEY ${IMAGE_REGISTRY}/${IMAGE_NAME}@${TAGS}
         env:
           TAGS: ${{ steps.push.outputs.digest }}
           COSIGN_EXPERIMENTAL: false
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
-          LOWERCASE: ${{ steps.registry_case.outputs.lowercase }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
 
       - name: Install ORAS
@@ -347,8 +368,10 @@ jobs:
         env:
           IMAGE: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
           DIGEST: ${{ steps.push.outputs.digest }}
-          SBOM: ${{ steps.generate-sbom.outputs.SBOM }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
         run: |
+          SBOM="sbom_out/${IMAGE_NAME}/sbom.json"
+
           cd "$(dirname "${SBOM}")"
           oras attach \
           --artifact-type application/vnd.spdx+json \
@@ -365,11 +388,10 @@ jobs:
         env:
           COSIGN_EXPERIMENTAL: false
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
-          LOWERCASE: ${{ steps.registry_case.outputs.lowercase }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
           SBOM_DIGEST: ${{ steps.upload-sbom.outputs.sbom_digest }}
         run: |
-          cosign sign -y --key env://COSIGN_PRIVATE_KEY ${LOWERCASE}/${IMAGE_NAME}@${SBOM_DIGEST}
+          cosign sign -y --key env://COSIGN_PRIVATE_KEY ${IMAGE_REGISTRY}/${IMAGE_NAME}@${SBOM_DIGEST}
 
       - name: Attestation
         if: github.event_name != 'pull_request'

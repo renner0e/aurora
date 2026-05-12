@@ -21,47 +21,13 @@ rm -rf /usr/share/doc/HTML
 # BASE IMAGE CHANGES
 # ######
 
-# Hide Discover entries by renaming them (allows for easy re-enabling)
-discover_apps=(
-  "org.kde.discover.desktop"
-  "org.kde.discover.flatpak.desktop"
-  "org.kde.discover.notifier.desktop"
-  "org.kde.discover.urlhandler.desktop"
-)
-
-for app in "${discover_apps[@]}"; do
-  if [ -f "/usr/share/applications/${app}" ]; then
-    mv "/usr/share/applications/${app}" "/usr/share/applications/${app}.disabled"
-  fi
-done
-
-# These notifications are useless and confusing
-rm /etc/xdg/autostart/org.kde.discover.notifier.desktop
+rm -f /usr/lib64/qt6/plugins/kf6/krunner/krunner_appstream.so
 
 # Use Bazaar for Flatpak refs
-# Force Ptyxis version opened via dbus (e.g., keyboard shortcut) to use the proper shim
 # https://github.com/ublue-os/bazzite/pull/3620
-sed -i 's@Exec=/usr/bin/ptyxis@Exec=/usr/bin/kde-ptyxis@g' /usr/share/dbus-1/services/org.gnome.Ptyxis.service
 echo "application/vnd.flatpak.ref=io.github.kolunmi.Bazaar.desktop" >> /usr/share/applications/mimeapps.list
 
-# Ptyxis Terminal
-sed -i 's@\[Desktop Action new-window\]@\[Desktop Action new-window\]\nX-KDE-Shortcuts=Ctrl+Alt+T@g' /usr/share/applications/org.gnome.Ptyxis.desktop
-sed -i 's@Exec=ptyxis@Exec=kde-ptyxis@g' /usr/share/applications/org.gnome.Ptyxis.desktop
-sed -i 's@Keywords=@Keywords=konsole;console;@g' /usr/share/applications/org.gnome.Ptyxis.desktop
-# GTK 4.20 changed how it handles input methods; see https://github.com/ghostty-org/ghostty/discussions/8899#discussioncomment-14717979
-desktop-file-edit --set-key=Exec --set-value='env GTK_IM_MODULE=ibus kde-ptyxis' /usr/share/applications/org.gnome.Ptyxis.desktop
-cp /usr/share/applications/org.gnome.Ptyxis.desktop /usr/share/kglobalaccel/
-
 rm -f /etc/profile.d/gnome-ssh-askpass.{csh,sh} # This shouldn't be pulled in
-
-# Test aurora gschema override for errors. If there are no errors, proceed with compiling aurora gschema, which includes setting overrides.
-mkdir -p /tmp/aurora-schema-test
-find /usr/share/glib-2.0/schemas/ -type f ! -name "*.gschema.override" -exec cp {} /tmp/aurora-schema-test/ \;
-cp /usr/share/glib-2.0/schemas/zz0-aurora-modifications.gschema.override /tmp/aurora-schema-test/
-echo "Running error test for aurora gschema override. Aborting if failed."
-glib-compile-schemas --strict /tmp/aurora-schema-test
-echo "Compiling gschema to include aurora setting overrides"
-glib-compile-schemas /usr/share/glib-2.0/schemas &>/dev/null
 
 # Make Samba usershares work OOTB
 mkdir -p /var/lib/samba/usershares
