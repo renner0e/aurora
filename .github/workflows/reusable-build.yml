@@ -303,32 +303,39 @@ jobs:
         run: |
           echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >> $GITHUB_OUTPUT
 
+      # Before push so we don't unnecessarily push when install failed
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v4.1.2
+        if: github.event_name != 'pull_request'
+
       - name: Push to GHCR
         id: push
         if: github.event_name != 'pull_request'
-        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
         env:
           ALIAS_TAGS: ${{ steps.generate-tags.outputs.alias_tags }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
           DEFAULT_TAG: ${{ env.DEFAULT_TAG }}
-        with:
-          max_attempts: 3
-          retry_wait_seconds: 15
-          timeout_minutes: 10
-          command: |
+          MAX_ATTEMPTS: 3
+          WAIT_SECONDS: 15
+        run: |
             set -euox pipefail
             # HACK: push a second time so layer annotations are pushed
             # TODO: remove me when https://github.com/containers/podman/issues/27796 fixed
 
+            # TODO: implement pushing to GITHUB_JOB ID first and then we push to tags we care about
+            # TODO: actually push twice with a loop,
+            # TODO: rewrite this in just
             for tag in ${ALIAS_TAGS}; do
-              sudo -E /home/linuxbrew/.linuxbrew/bin/podman push --compression-format=zstd --compression-level=3 ${IMAGE_NAME}:${tag} ${IMAGE_REGISTRY}/${IMAGE_NAME}:${tag}
+              for i in $(seq "${MAX_ATTEMPTS}"); do
+                sudo -E /home/linuxbrew/.linuxbrew/bin/podman push \
+                --digestfile=/tmp/digestfile \
+                --compression-format=zstd \
+                --compression-level=3 \
+                ${IMAGE_NAME}:${tag} ${IMAGE_REGISTRY}/${IMAGE_NAME}:${tag}
+              done
             done
 
-            for tag in ${ALIAS_TAGS}; do
-              sudo -E /home/linuxbrew/.linuxbrew/bin/podman push --compression-format=zstd --compression-level=3 ${IMAGE_NAME}:${tag} ${IMAGE_REGISTRY}/${IMAGE_NAME}:${tag}
-            done
-
-            digest=$(skopeo inspect docker://${IMAGE_REGISTRY}/${IMAGE_NAME}:${DEFAULT_TAG} --format '{{.Digest}}')
+            digest=$(< /tmp/digestfile)
 
             echo "digest=${digest}" >> $GITHUB_OUTPUT
 
@@ -339,14 +346,12 @@ jobs:
           echo "Rebase to them: sudo bootc switch --transport oci /absolute/path/to/dir/aurora" >> $GITHUB_STEP_SUMMARY
           echo "Go back: sudo bootc switch --enforce-container-sigpolicy ghcr.io/ublue-os/aurora" >> $GITHUB_STEP_SUMMARY
 
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
-        if: github.event_name != 'pull_request'
-
       - name: Sign container image
         if: github.event_name != 'pull_request'
         run: |
-          cosign sign -y --key env://COSIGN_PRIVATE_KEY ${IMAGE_REGISTRY}/${IMAGE_NAME}@${TAGS}
+          # https://github.com/containers/container-libs/issues/388
+          # https://github.com/coreos/rpm-ostree/issues/5509
+          cosign sign -y --new-bundle-format=false --key env://COSIGN_PRIVATE_KEY ${IMAGE_REGISTRY}/${IMAGE_NAME}@${TAGS}
         env:
           TAGS: ${{ steps.push.outputs.digest }}
           COSIGN_EXPERIMENTAL: false
