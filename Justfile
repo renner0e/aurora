@@ -552,28 +552,23 @@ generate-build-tags image="aurora" tag="latest" flavor="main" kernel_pin="" ghcr
         COMMIT_TAGS+=(${SHA_SHORT}-{{ tag }}-${version})
     fi
 
-    # Convenience Tags
-    if [[ "{{ tag }}" =~ stable ]]; then
-        BUILD_TAGS+=("stable-daily" "${version}" "stable-daily-${version}" "stable-daily-${version:3}")
-    else
-        BUILD_TAGS+=("{{ tag }}" "{{ tag }}-${version}" "{{ tag }}-${version:3}")
+    # These are always used regardless of the stream
+    COMMON_TAGS=()
+    COMMON_TAGS+=("{{ tag }}" "{{ tag }}-${version}" "{{ tag }}-${version:3}")
+    BUILD_TAGS=("${COMMON_TAGS[@]}" "${BUILD_TAGS[@]}")
+
+    if [[ "{{ tag }}" == stable ]]; then
+      # Legacy Compatibility Tag so stable-daily points to stable, do not remove this
+      BUILD_TAGS+=("{{ tag }}-daily" "${version}" "{{ tag }}-daily-${version}" "{{ tag }}-daily-${version:3}")
+
+    elif [[ "{{ tag }}" == latest ]]; then
+      # We only want :$FEDORA_VERSION to point to :latest
+      BUILD_TAGS+=("{{ tag }}-${FEDORA_VERSION}" "${FEDORA_VERSION}-${version}" "${FEDORA_VERSION}-${version:3}")
+
+      # No special handling here for testing for now
     fi
 
-    # Weekly Stable / Rebuild Stable on workflow_dispatch
-    # TODO: remove stable-daily dance here, make sure compatibility tag with :stable works
     github_event="{{ github_event }}"
-
-    
-
-    if [[ "{{ tag }}" =~ "stable" && "${WEEKLY}" == "${TODAY}" && "${github_event}" =~ schedule ]]; then
-        BUILD_TAGS+=("stable" "stable-${version}" "stable-${version:3}")
-    elif [[ "{{ tag }}" =~ "stable" && "${github_event}" =~ workflow_dispatch|workflow_call ]]; then
-        BUILD_TAGS+=("stable" "stable-${version}" "stable-${version:3}")
-    elif [[ "{{ tag }}" =~ "stable" && "{{ ghcr }}" == "0" ]]; then
-        BUILD_TAGS+=("stable" "stable-${version}" "stable-${version:3}")
-    elif [[ ! "{{ tag }}" =~ stable|testing ]]; then
-        BUILD_TAGS+=("${FEDORA_VERSION}" "${FEDORA_VERSION}-${version}" "${FEDORA_VERSION}-${version:3}")
-    fi
 
     if [[ "${github_event}" == "pull_request" ]]; then
         alias_tags=("${COMMIT_TAGS[@]}")
