@@ -114,10 +114,6 @@ build $image="aurora" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pipeline
         akmods_flavor="main"
     fi
 
-    # Fedora Version
-    if [[ {{ ghcr }} == "0" ]]; then
-        rm -f /tmp/manifest.json
-    fi
     fedora_version=$({{ just }} fedora_version '{{ image }}' '{{ tag }}' '{{ flavor }}' '{{ kernel_pin }}')
 
     # Verify Base Image with cosign
@@ -536,9 +532,6 @@ generate-build-tags image="aurora" tag="latest" flavor="main" kernel_pin="" ghcr
     #!/usr/bin/bash
     set -eoux pipefail
 
-    if [[ {{ ghcr }} == "0" ]]; then
-        rm -f /tmp/manifest.json
-    fi
     FEDORA_VERSION="$({{ just }} fedora_version '{{ image }}' '{{ tag }}' '{{ flavor }}' '{{ kernel_pin }}')"
     IMAGE_NAME=$({{ just }} image_name {{ image }} {{ tag }} {{ flavor }})
 
