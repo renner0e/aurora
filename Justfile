@@ -109,7 +109,7 @@ build $image="aurora" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pipeline
     if [[ "${tag}" =~ stable ]]; then
         akmods_flavor="coreos-stable"
     elif [[ "${tag}" =~ testing ]]; then
-        akmods_flavor="coreos-testing"
+        akmods_flavor="main"
     else
         akmods_flavor="main"
     fi
