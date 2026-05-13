@@ -269,6 +269,9 @@ dnf -y install plasma-firewall-"${PLASMA_VERS}"
 #    dnf5 upgrade --refresh --advisory=FEDORA-2024-dd2e9fb225
 #fi
 
+# https://gitlab.freedesktop.org/xorg/xserver/-/work_items/1884
+dnf -y swap xorg-x11-server-Xwayland xorg-x11-server-Xwayland-0:24.1.11-1.fc"$(rpm -E %fedora)"
+
 # https://invent.kde.org/plasma/plasma-setup/-/issues/72
 dnf -y copr enable ublue-os/staging
 dnf -y copr disable ublue-os/staging

@@ -308,36 +308,60 @@ jobs:
         uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v4.1.2
         if: github.event_name != 'pull_request'
 
-      - name: Push to GHCR
-        id: push
+      # Workaround bugs caused by pushing images but not signing them because of CI flakes
+      - name: Push Ephemeral Tag
         if: github.event_name != 'pull_request'
+        id: pre-push
         env:
-          ALIAS_TAGS: ${{ steps.generate-tags.outputs.alias_tags }}
-          IMAGE_NAME: ${{ env.IMAGE_NAME }}
-          DEFAULT_TAG: ${{ env.DEFAULT_TAG }}
-          MAX_ATTEMPTS: 3
-          WAIT_SECONDS: 15
+          MATRIX_BASE_NAME: "${{ matrix.base_name }}"
+          MATRIX_IMAGE_FLAVOR: "${{ matrix.image_flavor }}"
+          MATRIX_STREAM_NAME: "${{ matrix.stream_name }}"
+          TEMP_PUSH_TAG: "${ github.run_id }"
         run: |
             set -euox pipefail
-            # HACK: push a second time so layer annotations are pushed
-            # TODO: remove me when https://github.com/containers/podman/issues/27796 fixed
 
-            # TODO: implement pushing to GITHUB_JOB ID first and then we push to tags we care about
-            # TODO: actually push twice with a loop,
-            # TODO: rewrite this in just
-            for tag in ${ALIAS_TAGS}; do
-              for i in $(seq "${MAX_ATTEMPTS}"); do
-                sudo -E /home/linuxbrew/.linuxbrew/bin/podman push \
-                --digestfile=/tmp/digestfile \
-                --compression-format=zstd \
-                --compression-level=3 \
-                ${IMAGE_NAME}:${tag} ${IMAGE_REGISTRY}/${IMAGE_NAME}:${tag}
-              done
-            done
+            sudp -E $(command -v just) push-image \
+                     "${MATRIX_BASE_NAME}" \
+                     "${MATRIX_STREAM_NAME}" \
+                     "${MATRIX_IMAGE_FLAVOR}" \
+                     "1" \
+                     "${IMAGE_REGISTRY}" \
+                     "1" \
+                     "${TEMP_PUSH_TAG}"
 
             digest=$(< /tmp/digestfile)
 
             echo "digest=${digest}" >> $GITHUB_OUTPUT
+
+      - name: Sign container image
+        if: github.event_name != 'pull_request'
+        env:
+          DIGEST: ${{ steps.pre-push.outputs.digest }}
+          COSIGN_EXPERIMENTAL: false
+          COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+        run: |
+          # use old bundle format because of
+          # https://github.com/containers/container-libs/issues/388
+          # https://github.com/coreos/rpm-ostree/issues/5509
+          cosign sign -y --new-bundle-format=false --key env://COSIGN_PRIVATE_KEY ${IMAGE_REGISTRY}/${IMAGE_NAME}@${DIGEST}
+
+      - name: Push to GHCR
+        id: push
+        if: github.event_name != 'pull_request'
+        env:
+          MATRIX_BASE_NAME: "${{ matrix.base_name }}"
+          MATRIX_STREAM_NAME: "${{ matrix.stream_name }}"
+          MATRIX_IMAGE_FLAVOR: "${{ matrix.image_flavor }}"
+        run: |
+            set -euox pipefail
+
+            sudp -E $(command -v just) push-image \
+                     "${MATRIX_BASE_NAME}" \
+                     "${MATRIX_STREAM_NAME}" \
+                     "${MATRIX_IMAGE_FLAVOR}" \
+                     "1" \
+                     "${IMAGE_REGISTRY}"
 
       - name: PR Testing Instructions
         if: github.event_name == 'pull_request'
@@ -346,17 +370,6 @@ jobs:
           echo "Rebase to them: sudo bootc switch --transport oci /absolute/path/to/dir/aurora" >> $GITHUB_STEP_SUMMARY
           echo "Go back: sudo bootc switch --enforce-container-sigpolicy ghcr.io/ublue-os/aurora" >> $GITHUB_STEP_SUMMARY
 
-      - name: Sign container image
-        if: github.event_name != 'pull_request'
-        run: |
-          # https://github.com/containers/container-libs/issues/388
-          # https://github.com/coreos/rpm-ostree/issues/5509
-          cosign sign -y --new-bundle-format=false --key env://COSIGN_PRIVATE_KEY ${IMAGE_REGISTRY}/${IMAGE_NAME}@${TAGS}
-        env:
-          TAGS: ${{ steps.push.outputs.digest }}
-          COSIGN_EXPERIMENTAL: false
-          COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
-          IMAGE_NAME: ${{ env.IMAGE_NAME }}
 
       - name: Install ORAS
         if: github.event_name != 'pull_request'
@@ -372,7 +385,7 @@ jobs:
         id: upload-sbom
         env:
           IMAGE: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
-          DIGEST: ${{ steps.push.outputs.digest }}
+          DIGEST: ${{ steps.pre-push.outputs.digest }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
         run: |
           SBOM="sbom_out/${IMAGE_NAME}/sbom.json"
@@ -403,7 +416,7 @@ jobs:
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 #v4.1.0
         with:
           subject-name: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
-          subject-digest: ${{ steps.push.outputs.digest }}
+          subject-digest: ${{ steps.pre-push.outputs.digest }}
           push-to-registry: true
 
   check:
