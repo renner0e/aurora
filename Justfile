@@ -690,6 +690,41 @@ setup-cache $image="aurora" $tag="latest" $flavor="main" $ghcr="0" $github_event
 
     echo "${CACHE_NAME}" "${ALLOW_CACHE_WRITE}"
 
+# Push Image to Registry
+[group('Utility')]
+push-image $image="aurora" $tag="latest" $flavor="main" $ghcr="0" $image_registry="" $temp_push="0" $temp_push_tag="0":
+    #!/usr/bin/bash
+    set -eoux pipefail
+
+    PUSH_CMD_ARGS=()
+    PUSH_CMD_ARGS+=("--digestfile=/tmp/digestfile")
+    PUSH_CMD_ARGS+=("--compression-format=zstd")
+    PUSH_CMD_ARGS+=("--compression-level=3")
+    PUSH_CMD_ARGS+=("--retry-delay=30s")
+    PUSH_CMD_ARGS+=("--retry=5")
+
+    PUSH_CMD=""${PODMAN}" push "${PUSH_CMD_ARGS[@]}""
+
+    image_name=$({{ just }} image_name '{{ image }}' '{{ tag }}' '{{ flavor }}')
+
+    alias_tags=$({{ just }} generate-build-tags '{{ image }}' '{{ tag }}' '{{ flavor }}')
+
+    if [[ "{{ ghcr }}" == "1" && -n "${image_registry}" && "${temp_push}" == "0" ]]; then
+      for tag in ${alias_tags}; do
+        ${PUSH_CMD} ${image_name}:${tag} ${image_registry}/${image_name}:${tag}
+        # We need to push twice to workaround https://github.com/containers/podman/issues/27796
+        ${PUSH_CMD} ${image_name}:${tag} ${image_registry}/${image_name}:${tag}
+      done
+    elif [[ "{{ ghcr }}" == "1" && -n "${image_registry}" && "${temp_push}" == "1" ]]; then
+      # Workaround bugs caused by pushing production tags and then signing
+      ${PUSH_CMD} ${image_name}:${tag} ${image_registry}/${image_name}:${tag}-${temp_push_tag}
+    elif [[ "{{ ghcr }}" == "0" ]]; then
+      image_registry="ttl.sh"
+      dummy_image="docker.io/library/alpine:latest"
+
+     ${PUSH_CMD} ${dummy_image} ${image_registry}/${image_name}:${tag}
+    fi
+
 # # Examples:
 #   > just retag-nvidia-on-ghcr stable-daily stable-daily-41.20250126.3 0
 #   > just retag-nvidia-on-ghcr latest latest-41.20250228.1 0
