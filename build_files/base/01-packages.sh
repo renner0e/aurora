@@ -4,23 +4,19 @@ echo "::group:: ===$(basename "$0")==="
 
 set -ouex pipefail
 
-# use negativo17 for 3rd party packages with higher priority than default
-if ! grep -q fedora-multimedia <(dnf5 repolist); then
-    # Enable or Install Repofile
-    dnf5 config-manager setopt fedora-multimedia.enabled=1 ||
-        dnf5 config-manager addrepo --from-repofile="https://negativo17.org/repos/fedora-multimedia.repo"
-fi
-# Set higher priority
-dnf5 config-manager setopt fedora-multimedia.priority=90
+# may break when partially upgraded
+dnf versionlock add "qt6-*" "plasma-desktop"
 
 # Add Flathub to the image for eventual application
 mkdir -p /etc/flatpak/remotes.d/
 curl --retry 3 -Lo /etc/flatpak/remotes.d/flathub.flatpakrepo https://dl.flathub.org/repo/flathub.flatpakrepo
 
-# may break SDDM/KWin when upgraded
-dnf5 versionlock add "qt6-*"
+PLASMA_VERS=$(rpm -q --qf "%{VERSION}" plasma-desktop)
 
 # use override to replace mesa and others with less crippled versions
+dnf config-manager addrepo --from-repofile="https://negativo17.org/repos/fedora-multimedia.repo"
+dnf config-manager setopt fedora-multimedia.priority=90
+
 OVERRIDES=(
     "intel-gmmlib"
     "intel-mediasdk"
@@ -38,6 +34,7 @@ OVERRIDES=(
 
 dnf5 distro-sync --skip-unavailable -y --repo='fedora-multimedia' "${OVERRIDES[@]}"
 dnf5 versionlock add "${OVERRIDES[@]}"
+
 # All DNF-related operations should be done here whenever possible
 #shellcheck source=build_files/shared/copr-helpers.sh
 source /ctx/build_files/shared/copr-helpers.sh
@@ -52,30 +49,18 @@ source /ctx/build_files/shared/copr-helpers.sh
 
 # Prevent partial upgrading, major kde version updates black screened
 # https://github.com/ublue-os/aurora/issues/1227
-dnf5 versionlock add plasma-desktop
 
 FEDORA_PACKAGES=(
     adcli
     alsa-firmware
-    apr
-    apr-util
+    apr{,-util}
     autofs
     borgbackup
     davfs2
     distrobox
     evtest
     fastfetch
-    fcitx5-chewing
-    fcitx5-chinese-addons
-    fcitx5-configtool
-    fcitx5-gtk
-    fcitx5-hangul
-    fcitx5-libthai
-    fcitx5-m17n
-    fcitx5-mozc
-    fcitx5-qt
-    fcitx5-sayura
-    fcitx5-unikey
+    fcitx5-{chewing,chinese-addons,configtool,gtk,hangul,libthai,m17n,mozc,qt,sayura,unikey}
     fish
     flatpak-spawn
     foo2zjs
@@ -88,8 +73,7 @@ FEDORA_PACKAGES=(
     google-noto-sans-sundanese-fonts
     grub2-tools-extra
     gum
-    gvfs
-    gvfs-fuse
+    gvfs{,-fuse}
     htop
     icoutils
     ifuse
@@ -118,13 +102,12 @@ FEDORA_PACKAGES=(
     pam_yubico
     pamu2fcfg
     plasma-wallpapers-dynamic
+    plasma-firewall-"${PLASMA_VERS}"
     powerstat
     powertop
     rclone
     restic
-    samba-winbind
-    samba-winbind-clients
-    samba-winbind-modules
+    samba-winbind{,-clients,-modules}
     setools-console
     solaar-udev
     squashfs-tools
@@ -139,21 +122,8 @@ FEDORA_PACKAGES=(
     zsh
 )
 
-# Version-specific Fedora package additions
-case "$FEDORA_MAJOR_VERSION" in
-    43)
-        FEDORA_PACKAGES+=(
-        )
-        ;;
-    44)
-        FEDORA_PACKAGES+=(
-        )
-        ;;
-esac
-
 NEGATIVO_PACKAGES=(
-    ffmpeg
-    ffmpeg-libs
+    ffmpeg{,-libs}
     intel-vaapi-driver
     libfdk-aac
     libva-utils
@@ -165,14 +135,10 @@ NEGATIVO_PACKAGES=(
 echo "Installing ${#FEDORA_PACKAGES[@]} packages from Fedora repos and ${#NEGATIVO_PACKAGES[@]} from Negativo..."
 dnf5 -y install "${FEDORA_PACKAGES[@]}" "${NEGATIVO_PACKAGES[@]}"
 
-# Install tailscale package from their repo
-echo "Installing tailscale from official repo..."
+# Fedora Tailscale is usually behind
 dnf config-manager addrepo --from-repofile=https://pkgs.tailscale.com/stable/fedora/tailscale.repo
 dnf config-manager setopt tailscale-stable.enabled=0
 dnf -y install --enablerepo='tailscale-stable' tailscale
-
-# Install COPR packages using isolated enablement (secure)
-echo "Installing COPR packages with isolated repo enablement..."
 
 # From ublue-os/packages
 copr_install_isolated "ublue-os/packages" \
@@ -180,18 +146,6 @@ copr_install_isolated "ublue-os/packages" \
     "krunner-bazaar" \
     "oversteer-udev" \
     "uupd"
-
-# Version-specific COPR packages
-# Example:
-# copr_install_isolated "ublue-os/packages" "bazaar" "uupd"
-case "$FEDORA_MAJOR_VERSION" in
-    43)
-
-        ;;
-    44)
-
-        ;;
-esac
 
 # kAirpods from ledif/kairpods COPR
 copr_install_isolated "ledif/kairpods" \
@@ -203,39 +157,22 @@ copr_install_isolated "lizardbyte/beta" \
 
 # Packages to exclude - common to all versions
 EXCLUDED_PACKAGES=(
-    akonadi-server
-    akonadi-server-mysql
+    akonadi-server{,-mysql}
     default-fonts-cjk-sans
     fedora-bookmarks
-    fedora-chromium-config
-    fedora-chromium-config-kde
+    fedora-chromium-config{,-kde}
     fedora-third-party
     ffmpegthumbnailer
     firefox
-    firefox-langpacks
     firewall-config
     google-noto-sans-cjk-vf-fonts
     kcharselect
     khelpcenter
-    krfb
-    krfb-libs
-    plasma-discover-kns
-    plasma-discover-rpm-ostree
-    plasma-discover
-    plasma-discover-libs
+    krfb{,-libs}
+    plasma-discover{,-libs}
     plasma-welcome-fedora
     podman-docker
 )
-
-# Version-specific package exclusions
-case "$FEDORA_MAJOR_VERSION" in
-    43)
-        EXCLUDED_PACKAGES+=()
-        ;;
-    44)
-        EXCLUDED_PACKAGES+=()
-        ;;
-esac
 
 # Remove excluded packages if they are installed
 if [[ "${#EXCLUDED_PACKAGES[@]}" -gt 0 ]]; then
@@ -251,13 +188,9 @@ fi
 # TODO: test if we still need this when upgrading firmware with fwupd
 dnf -y copr enable ublue-os/staging
 dnf -y copr disable ublue-os/staging
-dnf5 -y swap \
+dnf -y swap \
   --repo=copr:copr.fedorainfracloud.org:ublue-os:staging \
   fwupd fwupd
-
-
-PLASMA_VERS=$(rpm -q --qf "%{VERSION}" plasma-desktop)
-dnf -y install plasma-firewall-"${PLASMA_VERS}"
 
 ## Pins and Overrides
 ## Use this section to pin packages in order to avoid regressions
@@ -270,8 +203,6 @@ dnf -y install plasma-firewall-"${PLASMA_VERS}"
 #fi
 
 # https://invent.kde.org/plasma/plasma-setup/-/issues/72
-dnf -y copr enable ublue-os/staging
-dnf -y copr disable ublue-os/staging
 dnf -y swap --repo=copr:copr.fedorainfracloud.org:ublue-os:staging \
   plasma-setup plasma-setup-"${PLASMA_VERS}"-*.aurora
 
