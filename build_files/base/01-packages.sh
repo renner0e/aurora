@@ -7,10 +7,6 @@ set -ouex pipefail
 # may break when partially upgraded
 dnf versionlock add "qt6-*" "plasma-desktop"
 
-# Add Flathub to the image for eventual application
-mkdir -p /etc/flatpak/remotes.d/
-curl --retry 3 -Lo /etc/flatpak/remotes.d/flathub.flatpakrepo https://dl.flathub.org/repo/flathub.flatpakrepo
-
 PLASMA_VERS=$(rpm -q --qf "%{VERSION}" plasma-desktop)
 
 # use override to replace mesa and others with less crippled versions
