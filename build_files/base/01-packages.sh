@@ -204,11 +204,6 @@ dnf -y swap --repo=copr:copr.fedorainfracloud.org:ublue-os:staging \
 
 dnf versionlock add plasma-setup
 
-# we can't remove plasma-lookandfeel-fedora package because it is a dependency of plasma-desktop
-rpm --erase --nodeps plasma-lookandfeel-fedora
-# rpm erase doesn't remove actual files
-rm -rf /usr/share/plasma/look-and-feel/org.fedoraproject.fedora.desktop/
-
 # Install DX specific packages
 if [[ "${IMAGE_FLAVOR}" == "dx" ]]; then
   /ctx/build_files/dx/00-dx.sh

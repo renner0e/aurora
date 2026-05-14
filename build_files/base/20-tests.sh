@@ -126,7 +126,6 @@ UNWANTED_PACKAGES=(
     fedora-third-party
     firefox
     plasma-discover
-    plasma-lookandfeel-fedora
     podman-docker
 )
 
