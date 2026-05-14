@@ -652,8 +652,8 @@ setup-cache $image="aurora" $tag="latest" $flavor="main" $ghcr="0" $github_event
 #   > just retag-nvidia-on-ghcr stable stable-41.20250126.3 0
 #   > just retag-nvidia-on-ghcr latest latest-41.20250228.1 0
 #
-# working_tag: The tag of the most recent known good image (e.g., stable-daily-41.20250126.3)
-# stream:      One of latest, stable-daily, stable or gts
+# working_tag: The tag of the most recent known good image (e.g., latest.20250126.3)
+# stream:      One of latest, stable or testing
 # dry_run:     Only print the skopeo commands instead of running them
 #
 # First generate a PAT with package write access (https://github.com/settings/tokens)
