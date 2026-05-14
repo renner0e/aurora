@@ -709,15 +709,19 @@ push-image $image="aurora" $tag="latest" $flavor="main" $ghcr="0" $image_registr
 
     alias_tags=$({{ just }} generate-build-tags '{{ image }}' '{{ tag }}' '{{ flavor }}')
 
-    if [[ "{{ ghcr }}" == "1" && -n "${image_registry}" && "${temp_push}" == "0" ]]; then
-      for tag in ${alias_tags}; do
-        ${PUSH_CMD} ${image_name}:${tag} ${image_registry}/${image_name}:${tag}
-        # We need to push twice to workaround https://github.com/containers/podman/issues/27796
-        ${PUSH_CMD} ${image_name}:${tag} ${image_registry}/${image_name}:${tag}
-      done
-    elif [[ "{{ ghcr }}" == "1" && -n "${image_registry}" && "${temp_push}" == "1" ]]; then
-      # Workaround bugs caused by pushing production tags and then signing
-      ${PUSH_CMD} ${image_name}:${tag} ${image_registry}/${image_name}:${tag}-${temp_push_tag}
+    if [[ "{{ ghcr }}" == "1" && -n "${image_registry}" ]]; then
+
+      if [[ "${temp_push}" == "0" ]]; then
+        for tag in ${alias_tags}; do
+          ${PUSH_CMD} ${image_name}:${tag} ${image_registry}/${image_name}:${tag}
+          # We need to push twice to workaround https://github.com/containers/podman/issues/27796
+          ${PUSH_CMD} ${image_name}:${tag} ${image_registry}/${image_name}:${tag}
+        done
+
+      elif [[ "${temp_push}" == "1" ]]; then
+        ${PUSH_CMD} ${image_name}:${tag} ${image_registry}/${image_name}:${tag}-${temp_push_tag}
+      fi
+
     elif [[ "{{ ghcr }}" == "0" ]]; then
       image_registry="ttl.sh"
       dummy_image="docker.io/library/alpine:latest"
