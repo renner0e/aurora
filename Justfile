@@ -690,41 +690,52 @@ setup-cache $image="aurora" $tag="latest" $flavor="main" $ghcr="0" $github_event
 
     echo "${CACHE_NAME}" "${ALLOW_CACHE_WRITE}"
 
+# Examples:
+# just push-image aurora latest main 1 ghcr.io/renner0e renner0e 1 "$(cat /path/to/my.key)
+
 # Push Image to Registry
 [group('Utility')]
-push-image $image="aurora" $tag="latest" $flavor="main" $ghcr="0" $image_registry="" $temp_push="0" $temp_push_tag="0":
+push-image $image="aurora" $tag="latest" $flavor="main" $ghcr="0" $image_registry="" $repo_owner="" $sign="0" $cosign_private_key="":
     #!/usr/bin/bash
     set -eoux pipefail
-
-    PUSH_CMD_ARGS=()
-    PUSH_CMD_ARGS+=("--digestfile=/tmp/digestfile")
-    PUSH_CMD_ARGS+=("--compression-format=zstd")
-    PUSH_CMD_ARGS+=("--compression-level=3")
-    PUSH_CMD_ARGS+=("--retry-delay=30s")
-    PUSH_CMD_ARGS+=("--retry=5")
-
-    PUSH_CMD=""${PODMAN}" push "${PUSH_CMD_ARGS[@]}""
 
     image_name=$({{ just }} image_name '{{ image }}' '{{ tag }}' '{{ flavor }}')
 
     alias_tags=$({{ just }} generate-build-tags '{{ image }}' '{{ tag }}' '{{ flavor }}')
 
+    PUSH_CMD_ARGS=()
+    PUSH_CMD_ARGS+=("--compression-format=zstd")
+    PUSH_CMD_ARGS+=("--compression-level=3")
+    PUSH_CMD_ARGS+=("--retry-delay=30s")
+    PUSH_CMD_ARGS+=("--retry=5")
+
+    # We don't use cosign to avoid pushing tags to the registry without signatures
+    # in case of signing failures
+    # See: https://github.com/ublue-os/main/issues/643
+    if [[ "{{ sign }}"  == "1" ]]; then
+      PRIVATE_KEY_FILE="$(mktemp)"
+      echo "${cosign_private_key}" > "${PRIVATE_KEY_FILE}"
+      cat ${PRIVATE_KEY_FILE}
+      trap 'rm -f $PRIVATE_KEY_FILE' EXIT
+      REGISTRIES_CONF_DIR="/etc/containers/registries.d"
+      ${SUDOIF} mkdir -p "${REGISTRIES_CONF_DIR}"
+      yq -n '.docker.[env(image_registry)].use-sigstore-attachments = true' | ${SUDOIF} tee "${REGISTRIES_CONF_DIR}/${repo_owner}.yaml"
+
+      SIGN_CMD_ARGS=()
+      SIGN_CMD_ARGS+=("--sign-by-sigstore-private-key=${PRIVATE_KEY_FILE}")
+      SIGN_CMD_ARGS+=("--sign-passphrase-file=/dev/null")
+      PUSH_CMD_ARGS=("${PUSH_CMD_ARGS[@]}" "${SIGN_CMD_ARGS[@]}")
+    fi
+
+    PUSH_CMD=""${PODMAN}" push "${PUSH_CMD_ARGS[@]}""
+
     if [[ "{{ ghcr }}" == "1" && -n "${image_registry}" ]]; then
-
-      if [[ "${temp_push}" == "0" ]]; then
-        for tag in ${alias_tags}; do
-          ${PUSH_CMD} ${image_name}:${tag} ${image_registry}/${image_name}:${tag}
-          # We need to push twice to workaround https://github.com/containers/podman/issues/27796
-          ${PUSH_CMD} ${image_name}:${tag} ${image_registry}/${image_name}:${tag}
-        done
-
-      elif [[ "${temp_push}" == "1" ]]; then
-        ${PUSH_CMD} ${image_name}:${tag} ${image_registry}/${image_name}:${tag}-${temp_push_tag}
+      for tag in ${alias_tags}; do
+        ${PUSH_CMD} ${image_name}:${tag} ${image_registry}/${image_name}:${tag}
         # We need to push twice to workaround https://github.com/containers/podman/issues/27796
-        # If we don't do this then the digest changes and we are only signing this specific tag
-        ${PUSH_CMD} ${image_name}:${tag} ${image_registry}/${image_name}:${tag}-${temp_push_tag}
+        ${PUSH_CMD} ${image_name}:${tag} ${image_registry}/${image_name}:${tag}
+      done
       fi
-
     elif [[ "{{ ghcr }}" == "0" ]]; then
       image_registry="ttl.sh"
       dummy_image="docker.io/library/alpine:latest"
