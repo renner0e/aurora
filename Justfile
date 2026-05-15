@@ -720,6 +720,9 @@ push-image $image="aurora" $tag="latest" $flavor="main" $ghcr="0" $image_registr
 
       elif [[ "${temp_push}" == "1" ]]; then
         ${PUSH_CMD} ${image_name}:${tag} ${image_registry}/${image_name}:${tag}-${temp_push_tag}
+        # We need to push twice to workaround https://github.com/containers/podman/issues/27796
+        # If we don't do this then the digest changes and we are only signing this specific tag
+        ${PUSH_CMD} ${image_name}:${tag} ${image_registry}/${image_name}:${tag}-${temp_push_tag}
       fi
 
     elif [[ "{{ ghcr }}" == "0" ]]; then
