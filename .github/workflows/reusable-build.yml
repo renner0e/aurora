@@ -92,6 +92,10 @@ jobs:
         uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v4.1.2
         if: github.event_name != 'pull_request'
 
+      - name: Install ORAS
+        if: github.event_name != 'pull_request'
+        uses: oras-project/setup-oras@38de303aac69abb66f3e6255b7198bff35f323e3 # v2.0.0
+
       - name: Check Just Syntax
         shell: bash
         run: |
@@ -312,43 +316,6 @@ jobs:
           echo "${GITHUB_TOKEN}" | podman login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
           echo "${GITHUB_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
 
-      # Workaround bugs caused by pushing images but not signing them because of CI flakes
-      - name: Push Ephemeral Tag
-        if: github.event_name != 'pull_request'
-        id: pre-push
-        env:
-          MATRIX_BASE_NAME: "${{ matrix.base_name }}"
-          MATRIX_IMAGE_FLAVOR: "${{ matrix.image_flavor }}"
-          MATRIX_STREAM_NAME: "${{ matrix.stream_name }}"
-          TEMP_PUSH_TAG: "${{ github.run_id }}"
-        run: |
-            set -euox pipefail
-
-            sudo -E $(command -v just) push-image \
-                     "${MATRIX_BASE_NAME}" \
-                     "${MATRIX_STREAM_NAME}" \
-                     "${MATRIX_IMAGE_FLAVOR}" \
-                     "1" \
-                     "${IMAGE_REGISTRY}" \
-                     "1" \
-                     "${TEMP_PUSH_TAG}"
-
-            digest=$(< /tmp/digestfile)
-            echo "digest=${digest}" >> $GITHUB_OUTPUT
-
-      - name: Sign container image
-        if: github.event_name != 'pull_request'
-        env:
-          DIGEST: ${{ steps.pre-push.outputs.digest }}
-          COSIGN_EXPERIMENTAL: false
-          COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
-          IMAGE_NAME: ${{ env.IMAGE_NAME }}
-        run: |
-          # use old bundle format, so we can use newer cosign 3.X.X instead of 2.X.X
-          # https://github.com/containers/container-libs/issues/388
-          # https://github.com/coreos/rpm-ostree/issues/5509
-          cosign sign -y --new-bundle-format=false --key env://COSIGN_PRIVATE_KEY ${IMAGE_REGISTRY}/${IMAGE_NAME}@${DIGEST}
-
       # Workaround bug where capital letters in your GitHub username make it impossible to push to GHCR.
       # https://github.com/macbre/push-to-ghcr/issues/12
       - name: Lowercase Registry
@@ -365,6 +332,8 @@ jobs:
           MATRIX_BASE_NAME: "${{ matrix.base_name }}"
           MATRIX_STREAM_NAME: "${{ matrix.stream_name }}"
           MATRIX_IMAGE_FLAVOR: "${{ matrix.image_flavor }}"
+          GITHUB_REPOSITORY_OWNER: "${{ github.repository_owner }}"
+          COSIGN_PRIVATE_KEY: "${{ secrets.SIGNING_SECRET }}"
         run: |
             set -euox pipefail
 
@@ -373,11 +342,13 @@ jobs:
                      "${MATRIX_STREAM_NAME}" \
                      "${MATRIX_IMAGE_FLAVOR}" \
                      "1" \
-                     "${IMAGE_REGISTRY}"
+                     "${IMAGE_REGISTRY}" \
+                     "${GITHUB_REPOSITORY_OWNER}" \
+                     "1" \
+                     "${COSIGN_PRIVATE_KEY}"
 
-      - name: Install ORAS
-        if: github.event_name != 'pull_request'
-        uses: oras-project/setup-oras@38de303aac69abb66f3e6255b7198bff35f323e3 # v2.0.0
+            digest=$(< /tmp/digestfile)
+            echo "digest=${digest}" >> $GITHUB_OUTPUT
 
       - name: Login to GitHub Container Registry with ORAS
         if: github.event_name != 'pull_request'
@@ -392,7 +363,7 @@ jobs:
         id: upload-sbom
         env:
           IMAGE: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
-          DIGEST: ${{ steps.pre-push.outputs.digest }}
+          DIGEST: ${{ steps.push.outputs.digest }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
         run: |
           SBOM="sbom_out/${IMAGE_NAME}/sbom.json"
@@ -423,7 +394,7 @@ jobs:
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 #v4.1.0
         with:
           subject-name: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
-          subject-digest: ${{ steps.pre-push.outputs.digest }}
+          subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
 
   check:
