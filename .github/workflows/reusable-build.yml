@@ -395,7 +395,9 @@ jobs:
         with:
           subject-name: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.push.outputs.digest }}
-          push-to-registry: true
+          # this happens to break cosign verify --key statickey.pub
+          # although it does not affect skopeo, podman...
+          push-to-registry: false
 
   check:
     name: Check all ${{ matrix.stream_name }} builds successful
