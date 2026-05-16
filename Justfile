@@ -690,6 +690,57 @@ setup-cache $image="aurora" $tag="latest" $flavor="main" $ghcr="0" $github_event
 
     echo "${CACHE_NAME}" "${ALLOW_CACHE_WRITE}"
 
+[group('Utility')]
+[private]
+bootc $image="aurora" $tag="latest" $flavor="main" *ARGS:
+    #!/usr/bin/env bash
+    set -eoux pipefail
+
+    image_name=$({{ just }} image_name {{ image }} {{ tag }} {{ flavor }})
+
+    BOOTC_INSTALL_OPTIONS=()
+    BOOTC_INSTALL_OPTIONS+=("-v" "/var/lib/containers:/var/lib/containers" "-v" "/etc/containers:/etc/containers")
+
+    if [[ -d /sys/fs/selinux ]]; then
+      BOOTC_INSTALL_OPTIONS+=("-v" "/sys/fs/selinux:/sys/fs/selinux" "--security-opt" "label=type:unconfined_t")
+    fi
+
+    ${PODMAN} run \
+        --rm --privileged --pid=host \
+        -it \
+        "${BOOTC_INSTALL_OPTIONS[@]}" \
+        -v /dev:/dev \
+        -v "${BUILD_BASE_DIR:-.}:/data" \
+        localhost/"${image_name}":"${tag}" bootc {{ ARGS }}
+
+# Create bootable image
+[group('Utility')]
+disk-image $image="aurora" $tag="latest" $flavor="main" ghcr="0" $bootc_fs="btrfs":
+    #!/usr/bin/env bash
+    set -eoux pipefail
+
+    # this is enough for base aurora to make it more likely to run in CI
+    if [[ "{{ ghcr }}" == "1" ]]; then
+      IMG_SIZE=11G
+    else
+      # Do a little more locally so you can rebase
+      IMG_SIZE=30G
+    fi
+
+    BYTES_IMAGE_SIZE=$(numfmt --from=iec ${IMG_SIZE})
+
+    if [ ! -e "${BUILD_BASE_DIR:-.}/bootable.img" ]; then
+      FREE_SPACE=$(findmnt -bno AVAIL -T "${BUILD_BASE_DIR:-.}")
+      if [ "${FREE_SPACE}" -gt "${BYTES_IMAGE_SIZE}" ]; then
+        fallocate -l "${BYTES_IMAGE_SIZE}" "${BUILD_BASE_DIR:-.}/bootable.img"
+      else
+        echo "not enough disk space available"
+        exit 1
+      fi
+    fi
+
+    {{ just }} bootc "${image}" "${tag}" "${flavor}" install to-disk --generic-image --bootloader grub --via-loopback /data/bootable.img --filesystem "${bootc_fs}" --wipe
+
 # # Examples:
 #   > just retag-nvidia-on-ghcr stable-daily stable-daily-41.20250126.3 0
 #   > just retag-nvidia-on-ghcr latest latest-41.20250228.1 0

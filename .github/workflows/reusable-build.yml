@@ -247,6 +247,22 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+      - name: Create Bootable Image
+        id: bootc-install
+        # doing other images is not worth it
+        if: github.event_name == 'pull_request' && matrix.base_name == 'aurora' && matrix.image_flavor == 'main'
+        # free disk space varies
+        continue-on-error: true
+        env:
+          MATRIX_BASE_NAME: ${{ matrix.base_name }}
+          MATRIX_STREAM_NAME: ${{ matrix.stream_name }}
+          MATRIX_IMAGE_FLAVOR: ${{ matrix.image_flavor }}
+        run: |
+          sudo -E $(command -v just) disk-image "${MATRIX_BASE_NAME}" \
+                             "${MATRIX_STREAM_NAME}" \
+                             "${MATRIX_IMAGE_FLAVOR}" \
+                             1
+
       - name: PR Testing Instructions
         if: github.event_name == 'pull_request'
         id: pr-summary
@@ -409,6 +425,14 @@ jobs:
           subject-name: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
+
+      - name: Disk usage summary
+        if: always()
+        run: |
+          echo "### Disk usage" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          df -h >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
 
   check:
     name: Check all ${{ matrix.stream_name }} builds successful
