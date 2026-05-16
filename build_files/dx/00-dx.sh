@@ -130,7 +130,6 @@ if rpm -q docker-ce >/dev/null; then
     systemctl enable docker.socket
 fi
 systemctl enable podman.socket
-systemctl enable swtpm-workaround.service
 systemctl enable ublue-os-libvirt-workarounds.service
 systemctl enable aurora-dx-groups.service
 systemctl enable --global aurora-dx-user-vscode.service
