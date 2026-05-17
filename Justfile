@@ -722,9 +722,10 @@ push-image $image="aurora" $tag="latest" $flavor="main" $ghcr="0" $image_registr
       ${SUDOIF} mkdir -p "${REGISTRIES_CONF_DIR}"
       yq -n '.docker.[env(image_registry)].use-sigstore-attachments = true' | ${SUDOIF} tee "${REGISTRIES_CONF_DIR}/${repo_owner}.yaml"
 
+      PRIVATE_KEY_FILE="$PRIVATE_KEY_FILE" yq -n '.privateKeyFile = env(PRIVATE_KEY_FILE) | .privateKeyPassphraseFile = "/dev/null" | .rekorURL = "https://rekor.sigstore.dev"' | tee sigstore-param-file.yaml
+
       SIGN_CMD_ARGS=()
-      SIGN_CMD_ARGS+=("--sign-by-sigstore-private-key=${PRIVATE_KEY_FILE}")
-      SIGN_CMD_ARGS+=("--sign-passphrase-file=/dev/null")
+      SIGN_CMD_ARGS+=("--sign-by-sigstore=sigstore-param-file.yaml")
       PUSH_CMD_ARGS=("${PUSH_CMD_ARGS[@]}" "${SIGN_CMD_ARGS[@]}")
     fi
 
