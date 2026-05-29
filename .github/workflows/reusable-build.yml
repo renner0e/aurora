@@ -55,6 +55,10 @@ jobs:
         base_name: ["${{ inputs.brand_name }}", "${{ inputs.brand_name }}-dx"]
         stream_name: ["${{ inputs.stream_name }}"]
         architecture: ${{ fromJson(inputs.architecture) }}
+        exclude:
+          # DX is "legacy", don't build them for arm
+          - architecture: aarch64
+            base_name: "${{ inputs.brand_name }}-dx"
 
     steps:
       - name: Checkout
