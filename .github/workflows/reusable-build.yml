@@ -21,6 +21,11 @@ on:
       previous_build:
         description: 'Set a reference to a previous build to make updates smaller'
         type: string
+      architecture:
+        description: "JSON string of architectures to build, '[aarch64, x86_64]'"
+        default: "['x86_64']"
+        required: false
+        type: string
 
 env:
   IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
@@ -34,7 +39,7 @@ permissions: {}
 jobs:
   build_container:
     name: image
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.architecture == 'amd64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
     permissions:
       contents: read
       packages: write
@@ -49,6 +54,7 @@ jobs:
         image_flavor: ${{ fromJson(inputs.image_flavors) }}
         base_name: ["${{ inputs.brand_name }}", "${{ inputs.brand_name }}-dx"]
         stream_name: ["${{ inputs.stream_name }}"]
+        architecture: ${{ fromJson(inputs.architecture) }}
 
     steps:
       - name: Checkout
