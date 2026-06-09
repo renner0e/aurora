@@ -59,6 +59,7 @@ jobs:
         architecture: ${{ fromJson(inputs.architecture) }}
         spirit_animal: ["dog", "cat"]
         favorite_food: ["pizza", "pasta"]
+        likes: ["fungus", "amongus"]
         exclude:
           # DX is "legacy", don't build them for arm
           - architecture: aarch64
