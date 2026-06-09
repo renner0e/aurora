@@ -57,6 +57,8 @@ jobs:
         base_name: ["${{ inputs.brand_name }}", "${{ inputs.brand_name }}-dx"]
         stream_name: ["${{ inputs.stream_name }}"]
         architecture: ${{ fromJson(inputs.architecture) }}
+        spirit_animal: ["dog", "cat"]
+        favorite_food: ["pizza", "pasta"]
         exclude:
           # DX is "legacy", don't build them for arm
           - architecture: aarch64
@@ -66,9 +68,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
-      - name: Free Up Space
-        id: remove-unwanted-software
-        uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6
+      - name: BTRFS on /var/{tmp,lib/containers}
+        id: btrfs
+        uses: renner0e/container-storage-action@raid0
+        with:
+          loopback-free: 0.85
+          target-dir: /var/lib/containers
 
       # TODO: remove me when we have a new podman in 26.04 runners
       # needed because old podman doesn't push layer annotations for
