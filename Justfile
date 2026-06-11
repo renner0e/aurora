@@ -301,7 +301,6 @@ rechunk $image="aurora" $tag="latest" $flavor="main" ghcr="0" pipeline="0":
     -e CHUNKAH_CONFIG_STR "{{ chunkah }}" \
     build \
     --verbose \
-    --compressed \
     --max-layers 128 \
     --prune /sysroot/ \
     --label ostree.commit- --label ostree.final-diffid- \
