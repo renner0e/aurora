@@ -42,6 +42,9 @@ jobs:
   build_container:
     name: image
     runs-on: ${{ matrix.architecture == 'x86_64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
+    container:
+      image: "ghcr.io/ublue-os/devcontainer:latest"
+      options: "--privileged --volume /var/lib/containers:/var/lib/containers --security-opt seccomp=unconfined --security-opt label=disable --user 0:0"
     permissions:
       contents: read
       packages: write
@@ -83,43 +86,6 @@ jobs:
       - name: Free Up Space
         id: remove-unwanted-software
         uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6
-
-      # TODO: remove me when we have a new podman in 26.04 runners
-      # needed because old podman doesn't push layer annotations for
-      # the rpm-ostree rechunker at all
-      - name: Update podman
-        shell: bash
-        run: |
-          set -eux
-          # Require the runner is ubuntu-24.04
-          IDV=$(. /usr/lib/os-release && echo ${ID}-${VERSION_ID})
-          test "${IDV}" = "ubuntu-24.04"
-          # resolute is the next release. The azure.archive.ubuntu.com mirror only carries amd64.
-          # Other architectures like arm64 use ports.ubuntu.com/ubuntu-ports.
-          if [ "$(dpkg --print-architecture)" = "amd64" ]; then
-            mirror="http://azure.archive.ubuntu.com/ubuntu"
-          else
-            mirror="http://ports.ubuntu.com/ubuntu-ports"
-          fi
-          echo "deb ${mirror} resolute universe main" | sudo tee /etc/apt/sources.list.d/resolute.list
-          /bin/time -f '%E %C' sudo apt update
-          # skopeo is currently older in resolute for some reason hence --allow-downgrades
-          /bin/time -f '%E %C' sudo apt install -y --allow-downgrades crun/resolute buildah/resolute podman/resolute skopeo/resolute
-          podman --version
-
-      - name: Install Just
-        run: |
-          /home/linuxbrew/.linuxbrew/bin/brew install just
-          echo "/home/linuxbrew/.linuxbrew/bin" >> $GITHUB_PATH
-
-      # FIXME: Implement retries for stuff like this
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
-        if: inputs.publish
-
-      - name: Install ORAS
-        if: inputs.publish
-        uses: oras-project/setup-oras@38de303aac69abb66f3e6255b7198bff35f323e3 # v2.0.0
 
       - name: Check Just Syntax
         shell: bash
