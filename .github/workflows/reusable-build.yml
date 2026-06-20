@@ -69,6 +69,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
+      - name: Mark Directory as Safe
+        run: git config --system --add safe.directory "$GITHUB_WORKSPACE"
+
       # FIXME: We need both actions as we run out of space on /var/tmp, however this
       # will still fail sometimes as even the smallest 72G runners have a
       # chance of not having /mnt and only 20GB free. Please investigate this
