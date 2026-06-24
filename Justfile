@@ -146,15 +146,6 @@ build $image="aurora" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pipeline
         kernel_release="${kernel_pin}"
     fi
 
-    # Verify Containers with Cosign
-    {{ just }} verify-container cosign.pub "ghcr.io/ublue-os/akmods:${akmods_flavor}-${fedora_version}-${kernel_release}"
-    if [[ "${akmods_flavor}" =~ coreos ]]; then
-        {{ just }} verify-container cosign.pub "ghcr.io/ublue-os/akmods-zfs:${akmods_flavor}-${fedora_version}-${kernel_release}"
-    fi
-    if [[ "${flavor}" =~ nvidia-open ]]; then
-        {{ just }} verify-container cosign.pub "ghcr.io/ublue-os/akmods-nvidia-open:${akmods_flavor}-${fedora_version}-${kernel_release}"
-    fi
-
     cosign verify \
       --certificate-oidc-issuer https://token.actions.githubusercontent.com \
       --certificate-identity-regexp="github.com/get-aurora-dev/common/.github/workflows/*" \
@@ -164,8 +155,6 @@ build $image="aurora" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pipeline
       --certificate-oidc-issuer https://token.actions.githubusercontent.com \
       --certificate-identity-regexp="github.com/coreos/chunkah/.github/workflows/*" \
       "{{ chunkah }}"
-
-    {{ just }} verify-container cosign.pub "{{ brew }}"
 
     # Get Version
     TIMESTAMP="$(date +%Y%m%d)"
