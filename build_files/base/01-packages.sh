@@ -176,7 +176,6 @@ EXCLUDED_PACKAGES=(
     firewall-config
     kcharselect
     khelpcenter
-    krfb{,-libs}
     plasma-discover{,-libs}
     plasma-welcome-fedora
     podman-docker
