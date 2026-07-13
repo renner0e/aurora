@@ -208,6 +208,7 @@ dnf -y copr disable ublue-os/staging
 dnf -y swap --repo=copr:copr.fedorainfracloud.org:ublue-os:staging \
   plasma-setup plasma-setup-"${PLASMA_VERS}"-*.aurora
 
+dnf -y downgrade bootupd
 dnf versionlock add plasma-setup
 
 # Install DX specific packages
