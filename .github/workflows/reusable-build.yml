@@ -85,11 +85,6 @@ jobs:
         id: remove-unwanted-software
         uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6
 
-      - name: Disable Apparmor
-        run: |
-          sudo aa-teardown >/dev/null 2>&1 || true
-          sudo systemctl disable --now apparmor.service >/dev/null 2>&1
-
       - name: Enable unprivileged user namespaces
         run: |
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0
