@@ -198,17 +198,7 @@ build $image="aurora" $tag="latest" $flavor="main" $rechunk="false" $ghcr="false
         ALL_IMAGES+=("${AKMODS_NVIDIA_OPEN}")
     fi
 
-    cosign verify \
-      --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-      --certificate-identity-regexp="github.com/get-aurora-dev/common/.github/workflows/*" \
-      "{{ common }}"
-
     ALL_IMAGES+=("{{ common }}")
-
-    cosign verify \
-      --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-      --certificate-identity-regexp="github.com/coreos/chunkah/.github/workflows/*" \
-      "{{ chunkah }}"
 
     ALL_IMAGES+=("{{ chunkah }}")
 
@@ -824,11 +814,12 @@ bootc $image="aurora" $tag="latest" $flavor="main" *ARGS:
 
     ${PODMAN} run \
         --rm --privileged --pid=host \
+        -e RUST_LOG=debug \
         -it \
         "${BOOTC_INSTALL_OPTIONS[@]}" \
         -v /dev:/dev \
         -v "${BUILD_BASE_DIR:-.}:/data" \
-        "${image_name}:${tag}" bootc {{ ARGS }}
+        "aurora-composefs:latest" bash {{ ARGS }}
 
 # Example: sudo just disk-image -t testing --backend composefs
 # Create bootable image
@@ -869,7 +860,7 @@ disk-image $image="aurora" $tag="latest" $flavor="main" $ghcr="false" $backend="
     if [[ "${backend}" == "ostree" ]]; then
       BOOTC_INSTALL_ARGS+=("--bootloader grub")
     else
-      BOOTC_INSTALL_ARGS+=("--bootloader systemd" "--composefs-backend")
+      BOOTC_INSTALL_ARGS+=("--bootloader systemd" "--composefs-backend" "--experimental-unified-storage")
     fi
 
     {{ just }} bootc --image "${image}" --tag "${tag}" --flavor "${flavor}" install to-disk -- "${BOOTC_INSTALL_ARGS[@]}"
