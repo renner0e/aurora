@@ -9,10 +9,6 @@ dnf versionlock add "qt6-*" "plasma-desktop"
 
 PLASMA_VERS=$(rpm -q --qf "%{VERSION}" plasma-desktop)
 
-# use override to replace mesa and others with less crippled versions
-dnf config-manager addrepo --from-repofile="https://negativo17.org/repos/fedora-multimedia.repo"
-dnf config-manager setopt fedora-multimedia.priority=90
-
 OVERRIDES=(
     "intel-gmmlib"
     "intel-mediasdk"
@@ -27,9 +23,6 @@ OVERRIDES=(
     "mesa-libgbm"
     "mesa-vulkan-drivers"
 )
-
-dnf5 distro-sync --skip-unavailable -y --repo='fedora-multimedia' "${OVERRIDES[@]}"
-dnf5 versionlock add "${OVERRIDES[@]}"
 
 # All DNF-related operations should be done here whenever possible
 #shellcheck source=build_scripts/shared/copr-helpers.sh
@@ -85,10 +78,8 @@ FEDORA_PACKAGES=(
     krb5-workstation
     ksshaskpass
     ksystemlog
-    libavcodec
     libcamera-gstreamer
     libcamera-tools
-    libfdk-aac
     libimobiledevice-utils
     libratbag-ratbagd
     libxcrypt-compat
@@ -136,10 +127,10 @@ NEGATIVO_PACKAGES_AMD64=(
     intel-vaapi-driver
   )
 
-PACKAGES=( "${FEDORA_PACKAGES[@]}" "${NEGATIVO_PACKAGES[@]}" )
+PACKAGES=( "${FEDORA_PACKAGES[@]}" )
 
 if [[ $(arch) == x86_64 ]]; then
-  PACKAGES+=( "${FEDORA_PACKAGES_AMD64[@]}" "${NEGATIVO_PACKAGES_AMD64[@]}" )
+  PACKAGES+=( "${FEDORA_PACKAGES_AMD64[@]}")
 fi
 
 dnf -y install "${PACKAGES[@]}"

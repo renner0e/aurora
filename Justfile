@@ -5,7 +5,7 @@ export base_image_name := env("BASE_IMAGE_NAME", "kinoite")
 
 stable_version := "44"
 latest_version := "44"
-testing_version := "44"
+testing_version := "45"
 
 images := '(
     [aurora]=aurora
@@ -181,27 +181,6 @@ build $image=default_image $tag=default_tag $flavor=default_flavor $rechunk="fal
       esac
     fi
 
-    if [[ -z "${kernel_pin:-}" ]]; then
-        kernel_release=$(skopeo inspect --retry-times 3 docker://ghcr.io/ublue-os/akmods:"${akmods_flavor}"-"${fedora_version}" | jq -r '.Labels["ostree.linux"]')
-    else
-        kernel_release="${kernel_pin}"
-    fi
-
-    BASENAME_AKMODS="ghcr.io/ublue-os/akmods"
-
-    AKMODS="${BASENAME_AKMODS}:${akmods_flavor}-${fedora_version}-${kernel_release}"
-    ALL_IMAGES+=("${AKMODS}")
-
-    if [[ "${akmods_flavor}" =~ coreos ]]; then
-        AKMODS_ZFS="${BASENAME_AKMODS}-zfs:${akmods_flavor}-${fedora_version}-${kernel_release}"
-        ALL_IMAGES+=("${AKMODS_ZFS}")
-    fi
-
-    if [[ "${flavor}" =~ nvidia-open ]]; then
-        AKMODS_NVIDIA_OPEN="${BASENAME_AKMODS}-nvidia-open:${akmods_flavor}-${fedora_version}-${kernel_release}"
-        ALL_IMAGES+=("${AKMODS_NVIDIA_OPEN}")
-    fi
-
     {{ retry_function }}
 
     retry 5 60 cosign verify \
@@ -254,7 +233,6 @@ build $image=default_image $tag=default_tag $flavor=default_flavor $rechunk="fal
     BUILD_ARGS+=("--build-arg" "BREW={{ brew }}")
     BUILD_ARGS+=("--build-arg" "IMAGE_NAME=${image_name}")
     BUILD_ARGS+=("--build-arg" "IMAGE_VENDOR={{ repo_organization }}")
-    BUILD_ARGS+=("--build-arg" "KERNEL=${kernel_release}")
     BUILD_ARGS+=("--build-arg" "VERSION=${ver}")
     if [[ -z "$(git status -s)" ]]; then
         BUILD_ARGS+=("--build-arg" "SHA_HEAD_SHORT=$(git rev-parse --short HEAD)")
@@ -284,7 +262,6 @@ build $image=default_image $tag=default_tag $flavor=default_flavor $rechunk="fal
     else
         LABELS+=("--label" "org.opencontainers.image.revision=deadbeef")
     fi
-    LABELS+=("--label" "ostree.linux=${kernel_release}")
 
     case "${akmods_flavor}" in
     "coreos-stable") BUILD_ARGS+=("--cpp-flag=-DZFS") ;;

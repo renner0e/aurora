@@ -116,10 +116,6 @@ NEGATIVO=(
     x265-libs
 )
 
-for package in "${NEGATIVO[@]}"; do
-  rpm -q --qf "%{NAME} %{VENDOR}" "${package}" | grep -q "negativo17\.org" || { echo "${package} not from negativo... Exiting"; exit 1 ; }
-done
-
 # these packages are supposed to be removed
 # and are considered footguns
 UNWANTED_PACKAGES=(

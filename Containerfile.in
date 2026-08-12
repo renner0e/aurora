@@ -10,16 +10,6 @@ ARG BREW
 FROM ${COMMON} AS common
 FROM ${BREW} AS brew
 
-FROM ghcr.io/ublue-os/akmods:${AKMODS_FLAVOR}-${FEDORA_MAJOR_VERSION}-${KERNEL} AS akmods
-
-#if defined(NVIDIA)
-FROM ghcr.io/ublue-os/akmods-nvidia-open:${AKMODS_FLAVOR}-${FEDORA_MAJOR_VERSION}-${KERNEL} AS akmods-nvidia-open
-#endif
-
-#if defined(ZFS)
-FROM ghcr.io/ublue-os/akmods-zfs:${AKMODS_FLAVOR}-${FEDORA_MAJOR_VERSION}-${KERNEL} AS akmods-zfs
-#endif
-
 FROM scratch AS ctx
 COPY /build_scripts /build_scripts
 
@@ -58,13 +48,9 @@ RUN --mount=type=tmpfs,dst=/boot \
     --mount=type=tmpfs,dst=/var \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache/libdnf5 \
-    --mount=type=bind,from=akmods,src=/kernel-rpms,dst=/tmp/kernel-rpms \
-    --mount=type=bind,from=akmods,src=/rpms/common,dst=/tmp/rpms/common \
-    --mount=type=bind,from=akmods,src=/rpms/kmods,dst=/tmp/rpms/kmods \
     --mount=type=secret,id=GITHUB_TOKEN \
     /ctx/build_scripts/shared/build-prep.sh && \
     /ctx/build_scripts/base/01-packages.sh && \
-    /ctx/build_scripts/base/02-install-common-kernel-akmods.sh && \
     /ctx/build_scripts/base/03-fetch.sh
 #endif
 
