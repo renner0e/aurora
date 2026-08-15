@@ -338,23 +338,6 @@ jobs:
           # https://github.com/coreos/rpm-ostree/issues/5509
           cosign sign -y --new-bundle-format=false --use-signing-config=false --key env://COSIGN_PRIVATE_KEY ${IMAGE_REGISTRY}/${IMAGE_NAME}@${DIGEST}
 
-      - name: Push Manifest to GHCR
-        id: push-manifest
-        if: inputs.publish
-        env:
-          MATRIX_BASE_NAME: "${{ matrix.base_name }}"
-          MATRIX_STREAM_NAME: "${{ matrix.stream_name }}"
-          MATRIX_IMAGE_FLAVOR: "${{ matrix.image_flavor }}"
-        run: |
-            set -euox pipefail
-
-            $(command -v just) manifest \
-              --image "${MATRIX_BASE_NAME}" \
-              --tag "${MATRIX_STREAM_NAME}" \
-              --flavor "${MATRIX_IMAGE_FLAVOR}" \
-              --ghcr \
-              --registry "${IMAGE_REGISTRY}"
-
       - name: Login to GitHub Container Registry with ORAS
         if: inputs.publish
         env:
@@ -410,6 +393,56 @@ jobs:
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           df -h >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+  manifest:
+    name: Create Manifest
+    runs-on: ubuntu-26.04
+    if: always()
+    needs:
+      - build_container
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Just
+        run: |
+          /home/linuxbrew/.linuxbrew/bin/brew install just
+          echo "/home/linuxbrew/.linuxbrew/bin" >> $GITHUB_PATH
+
+      - name: Image Name
+        shell: bash
+        env:
+          MATRIX_BASE_NAME: ${{ matrix.base_name }}
+          MATRIX_STREAM_NAME: ${{ matrix.stream_name }}
+          MATRIX_IMAGE_FLAVOR: ${{ matrix.image_flavor }}
+        run: |
+          IMAGE_NAME="$(just image_name \
+                      --image ${MATRIX_BASE_NAME} \
+                      --tag ${MATRIX_STREAM_NAME} \
+                      --flavor ${MATRIX_IMAGE_FLAVOR})"
+
+      - name: Push Manifest to GHCR
+        id: push-manifest
+        if: inputs.publish
+        env:
+          MATRIX_BASE_NAME: "${{ matrix.base_name }}"
+          MATRIX_STREAM_NAME: "${{ matrix.stream_name }}"
+          MATRIX_IMAGE_FLAVOR: "${{ matrix.image_flavor }}"
+        run: |
+            set -euox pipefail
+
+            $(command -v just) manifest \
+              --image "${MATRIX_BASE_NAME}" \
+              --tag "${MATRIX_STREAM_NAME}" \
+              --flavor "${MATRIX_IMAGE_FLAVOR}" \
+              --ghcr \
+              --registry "${IMAGE_REGISTRY}"
 
   check:
     name: Check all ${{ matrix.stream_name }} builds successful
