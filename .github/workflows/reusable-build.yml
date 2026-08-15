@@ -47,32 +47,41 @@ jobs:
       - name: Set matrix
         id: set-matrix
         env:
-          BRAND_NAME: "${{ inputs.brand_name }}"
+          BASE_NAMES: "${{ inputs.brand_name }}"
           IMAGE_FLAVORS: "${{ inputs.image_flavors }}"
-          ARCHITECTURES: "${{ inputs.architecture }}"
+          STREAM_NAMES: "${{ inputs.stream_name }}"
+          ARCHITECTURES: "${{ inputs.architectures }}"
         run: |
-          MATRIX=$(jq -nc \
-            --arg brand "$BRAND_NAME" \
-            --argjson flavors "$IMAGE_FLAVORS" \
-            --argjson archs "$ARCHITECTURES" \
-            '
-            {
-              include: [
-                ["", "-dx"][] as $dx |
-                $flavors[] as $flavor |
-                $archs[] as $arch |
-                ($flavor | if . == "main" or . == "" then "" else "-\(.)" end) as $f_suffix |
-                "\($brand)\($dx)\($f_suffix)" as $image_name |
+          MATRIX="$(jq -nc \
+                --arg base_names "$BASE_NAME" \
+                --arg image_flavors "$IMAGE_FLAVOR" \
+                --arg stream_names "$STREAM_NAME" \
+                --arg architectures "$ARCHITECTURES" \
+                '
+                ($base_names | gsub("[\\[\\]\"]"; "") | split(",") | map(gsub("^\\s+|\\s+$"; ""))) as $base_names |
+                ($image_flavors | gsub("[\\[\\]\"]"; "") | split(",") | map(gsub("^\\s+|\\s+$"; ""))) as $image_flavors |
+                ($stream_names | gsub("[\\[\\]\"]"; "") | split(",") | map(gsub("^\\s+|\\s+$"; ""))) as $stream_names |
+                ($architectures | gsub("[\\[\\]\"]"; "") | split(",") | map(gsub("^\\s+|\\s+$"; ""))) as $architectures |
                 {
-                  image_name: $image_name,
-                  target: "\($image_name)-\($arch)",
-                  base_name: "\($brand)\($dx)",
-                  image_flavor: $flavor,
-                  architecture: $arch
+                  include: [
+                    $base_names[] as $b |
+                    $image_flavors[] as $f |
+                    $stream_names[] as $s |
+                    $architectures[] as $a |
+                    select(($b | endswith("-dx") and ($a == "arm64" or $a == "aarch64")) | not) |
+                    ($f | if . == "main" or . == "" then "" else "-\(.)" end) as $f_suffix |
+                    {
+                      base_name: $b,
+                      image_flavor: $f,
+                      stream_name: $s,
+                      architecture: $a,
+                      image_name: "\($b)\($f_suffix)",
+                      target: "\($b)\($f_suffix)-\($a)"
+                    }
+                  ]
                 }
-              ]
-            }
-            ')
+                '
+              )"
           echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
 
   build_container:
@@ -89,16 +98,7 @@ jobs:
     continue-on-error: false
     strategy:
       fail-fast: false
-      matrix:
-        image_flavor: ${{ fromJson(inputs.image_flavors) }}
-        base_name: ["${{ inputs.brand_name }}", "${{ inputs.brand_name }}-dx"]
-        stream_name: ["${{ inputs.stream_name }}"]
-        architecture: ${{ fromJson(inputs.architecture) }}
-        exclude:
-          # DX is "legacy", don't build them for arm
-          - architecture: aarch64
-            base_name: "${{ inputs.brand_name }}-dx"
-
+      matrix: ${{ fromJson(needs.generate_matrix.outputs.matrix) }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
