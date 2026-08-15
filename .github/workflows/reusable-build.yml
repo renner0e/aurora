@@ -39,8 +39,23 @@ concurrency:
 permissions: {}
 
 jobs:
+  generate_matrix:
+    runs-on: ubuntu-slim
+    strategy:
+      fail-fast: false
+      matrix: &matrix-config
+        image_flavor: ${{ fromJson(inputs.image_flavors) }}
+        base_name: ["${{ inputs.brand_name }}", "${{ inputs.brand_name }}-dx"]
+        stream_name: ["${{ inputs.stream_name }}"]
+        architecture: ${{ fromJson(inputs.architecture) }}
+        exclude:
+          # DX is "legacy", don't build them for arm
+          - architecture: aarch64
+            base_name: "${{ inputs.brand_name }}-dx"
+
   build_container:
     name: image
+    needs: generate_matrix
     runs-on: ${{ matrix.architecture == 'x86_64' && 'ubuntu-26.04' || 'ubuntu-26.04-arm' }}
     permissions:
       contents: read
@@ -52,15 +67,7 @@ jobs:
     continue-on-error: false
     strategy:
       fail-fast: false
-      matrix:
-        image_flavor: ${{ fromJson(inputs.image_flavors) }}
-        base_name: ["${{ inputs.brand_name }}", "${{ inputs.brand_name }}-dx"]
-        stream_name: ["${{ inputs.stream_name }}"]
-        architecture: ${{ fromJson(inputs.architecture) }}
-        exclude:
-          # DX is "legacy", don't build them for arm
-          - architecture: aarch64
-            base_name: "${{ inputs.brand_name }}-dx"
+      matrix: *matrix-config
 
     steps:
       - name: Checkout
@@ -448,7 +455,7 @@ jobs:
     name: Check all ${{ matrix.stream_name }} builds successful
     if: always()
     runs-on: ubuntu-slim
-    needs: [build_container]
+    needs: [build_container, manifest]
     steps:
       - name: Check Jobs
         env:
