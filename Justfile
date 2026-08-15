@@ -903,19 +903,19 @@ push-image $image=default_image $tag=default_tag $flavor=default_flavor $ghcr="f
     PUSH_CMD_ARGS+=("--digestfile=/tmp/digestfile")
     PUSH_CMD_ARGS+=("--compression-format=zstd")
     PUSH_CMD_ARGS+=("--compression-level=3")
-    # TODO; This has failed already once, investigate if this actually does something and we need to use the retry function
-    PUSH_CMD_ARGS+=("--retry-delay=60s")
-    PUSH_CMD_ARGS+=("--retry=10")
 
     PUSH_CMD=""${PODMAN}" push "${PUSH_CMD_ARGS[@]}""
 
     image_name=$({{ just }} image_name --image "${image}" --tag "${tag}" --flavor "${flavor}")
+    # --retry* doesn't work for network flakaes
+    {{ retry_function }}
 
     if [[ "${ghcr}" == "true" && -n "${registry}" ]]; then
       for _ in $(seq 2); do
         # We need to push twice to workaround https://github.com/containers/podman/issues/27796
         # If we don't do this then the digest changes and we are only signing this specific tag
-        ${PUSH_CMD} "${image_name}:${tag}" "${registry}/${image_name}:${tag}-{{ arch }}"
+
+        retry 5 60 ${PUSH_CMD} "${image_name}:${tag}" "${registry}/${image_name}:${tag}-{{ arch }}"
       done
     else
       echo "This is intended to be run in ghcr only."
@@ -971,17 +971,16 @@ manifest $image=default_image $tag=default_tag $flavor=default_flavor $ghcr="fal
     PUSH_CMD_ARGS+=("--digestfile=/tmp/digestfile")
     PUSH_CMD_ARGS+=("--compression-format=zstd")
     PUSH_CMD_ARGS+=("--compression-level=3")
-    # TODO; This has failed already once, investigate if this actually does something and we need to use the retry function
-    PUSH_CMD_ARGS+=("--retry-delay=60s")
-    PUSH_CMD_ARGS+=("--retry=10")
     PUSH_CMD_ARGS+=("--all=false")
 
     PUSH_CMD=""${PODMAN}" manifest push "${PUSH_CMD_ARGS[@]}""
 
     alias_tags=$({{ just }} generate-build-tags --image "${image}" --tag "${tag}" --flavor "${flavor}")
 
+    {{ retry_function }}
+
     for alias_tag in ${alias_tags}; do
-      ${PUSH_CMD} ${registry}/${image_name}:${tag} ${registry}/${image_name}:${alias_tag}
+      retry 5 60 ${PUSH_CMD} ${registry}/${image_name}:${tag} ${registry}/${image_name}:${alias_tag}
     done
 
 # Login to Container Registry
