@@ -192,39 +192,6 @@ jobs:
             --tag "${MATRIX_STREAM_NAME}" \
             --flavor "${MATRIX_IMAGE_FLAVOR}"
 
-      - name: Setup Syft
-        id: setup-syft
-        if: inputs.publish
-        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
-
-      - name: Generate SBOM
-        if: inputs.publish
-        id: generate-sbom
-        env:
-          MATRIX_BASE_NAME: ${{ matrix.base_name }}
-          MATRIX_STREAM_NAME: ${{ matrix.stream_name }}
-          MATRIX_IMAGE_FLAVOR: ${{ matrix.image_flavor }}
-          SYFT_CMD: ${{ steps.setup-syft.outputs.cmd }}
-        run: |
-          $(command -v just) gen-sbom \
-            --image "${MATRIX_BASE_NAME}" \
-            --tag "${MATRIX_STREAM_NAME}" \
-            --flavor "${MATRIX_IMAGE_FLAVOR}" \
-            "${SYFT_CMD}"
-
-      - name: Secureboot Check
-        id: secureboot
-        shell: bash
-        env:
-          MATRIX_BASE_NAME: ${{ matrix.base_name }}
-          MATRIX_STREAM_NAME: ${{ matrix.stream_name }}
-          MATRIX_IMAGE_FLAVOR: ${{ matrix.image_flavor }}
-        run: |
-         $(command -v just) secureboot \
-            --image "${MATRIX_BASE_NAME}" \
-            --tag "${MATRIX_STREAM_NAME}" \
-            --flavor "${MATRIX_IMAGE_FLAVOR}"
-
       - name: Export to OCI Archive
         if: github.event_name == 'pull_request'
         id: oci-archive
@@ -344,37 +311,6 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
         run: |
           just login-registry oras ghcr.io
-
-      - name: Upload SBOM
-        if: inputs.publish
-        id: upload-sbom
-        env:
-          IMAGE: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
-          DIGEST: ${{ steps.push-image.outputs.digest }}
-          IMAGE_NAME: ${{ env.IMAGE_NAME }}
-        run: |
-          SBOM="sbom_out/${IMAGE_NAME}/sbom.json"
-
-          cd "$(dirname "${SBOM}")"
-          oras attach \
-          --artifact-type application/vnd.spdx+json \
-          --annotation filename=$(basename "$SBOM") \
-          "${IMAGE}@${DIGEST}" \
-          "$(basename ${SBOM})"
-
-          sbom_digest=$(oras discover --format json "${IMAGE}@${DIGEST}" | jq -r '.referrers[] | select(.artifactType == "application/vnd.spdx+json") | .digest')
-
-          echo "sbom_digest=${sbom_digest}" >> $GITHUB_OUTPUT
-
-      - name: Sign SBOM OCI Artifact
-        if: inputs.publish
-        env:
-          COSIGN_EXPERIMENTAL: false
-          COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
-          IMAGE_NAME: ${{ env.IMAGE_NAME }}
-          SBOM_DIGEST: ${{ steps.upload-sbom.outputs.sbom_digest }}
-        run: |
-          cosign sign -y --use-signing-config=false --key env://COSIGN_PRIVATE_KEY ${IMAGE_REGISTRY}/${IMAGE_NAME}@${SBOM_DIGEST}
 
       - name: Attestation
         if: inputs.publish
