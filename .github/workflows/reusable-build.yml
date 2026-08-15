@@ -69,10 +69,8 @@ jobs:
                     $image_flavors[] as $f |
                     $stream_names[] as $s |
                     $architectures[] as $a |
-
                     # DX is "legacy", don't build them for arm
                     select(($b | endswith("-dx") and ($a == "arm64" or $a == "aarch64")) | not) |
-
                     ($f | if . == "main" or . == "" then "" else "-\(.)" end) as $f_suffix |
                     {
                       base_name: $b,
