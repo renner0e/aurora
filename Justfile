@@ -915,7 +915,7 @@ push-image $image=default_image $tag=default_tag $flavor=default_flavor $ghcr="f
       for _ in $(seq 2); do
         # We need to push twice to workaround https://github.com/containers/podman/issues/27796
         # If we don't do this then the digest changes and we are only signing this specific tag
-        "${PUSH_CMD}" "${image_name}:${tag}" "${registry}/${image_name}:${tag}-{{ arch }}"
+        ${PUSH_CMD} "${image_name}:${tag}" "${registry}/${image_name}:${tag}-{{ arch }}"
       done
     else
       echo "This is intended to be run in ghcr only."
