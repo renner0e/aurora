@@ -53,6 +53,11 @@ jobs:
           - architecture: aarch64
             base_name: "${{ inputs.brand_name }}-dx"
 
+    steps:
+      - name: hello
+        run: |
+          echo "this needs to be here I think"
+
   build_container:
     name: image
     needs: generate_matrix
