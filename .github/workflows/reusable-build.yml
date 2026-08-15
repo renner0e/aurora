@@ -87,7 +87,10 @@ jobs:
   build_container:
     name: image
     needs: generate_matrix
-    runs-on: ${{ matrix.platform == 'amd64' && 'ubuntu-26.04' || 'ubuntu-26.04-arm' }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.generate_matrix.outputs.matrix) }}
+    runs-on: ${{ matrix.architecture == 'amd64' && 'ubuntu-26.04' || 'ubuntu-26.04-arm' }}
     permissions:
       contents: read
       packages: write
@@ -96,9 +99,6 @@ jobs:
       artifact-metadata: write
 
     continue-on-error: false
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJson(needs.generate_matrix.outputs.matrix) }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
