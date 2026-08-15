@@ -410,6 +410,9 @@ jobs:
     name: Create Manifest
     runs-on: ubuntu-26.04
     if: always()
+    strategy:
+      fail-fast: false
+      matrix: *matrix-config
     needs:
       - build_container
     permissions:
