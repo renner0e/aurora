@@ -27,6 +27,8 @@ default_image := "aurora"
 default_tag := "latest"
 default_flavor := "main"
 
+arch := shell("case $(uname -m) in x86_64) echo amd64 ;; aarch64) echo arm64 ;; esac")
+
 # Build Containers
 chunkah := shell("yq -r \".images[] | select(.name == \\\"chunkah\\\") | \\\"\\\\(.image)@\\\\(.digest)\\\"\" image-versions.yml")
 common := shell("yq -r \".images[] | select(.name == \\\"common\\\") | \\\"\\\\(.image)@\\\\(.digest)\\\"\" image-versions.yml")
@@ -623,6 +625,7 @@ generate-build-tags $image=default_image $tag=default_tag $flavor=default_flavor
     # These are always used regardless of the stream
     COMMON_TAGS=()
     COMMON_TAGS+=("${tag}")
+    COMMON_TAGS+=("${tag}-{{ arch }}")
     COMMON_TAGS+=("${tag}-${version}")
     COMMON_TAGS+=("${tag}-${version:3}")
     COMMON_TAGS+=("${tag}-${version}.${POINT}")
@@ -891,9 +894,7 @@ disk-image $image=default_image $tag=default_tag $flavor=default_flavor $ghcr="f
 [arg("image", long="image", short="i")]
 [arg("registry", long="registry")]
 [arg("tag", long="tag", short="t")]
-[arg("temp_push", long="temp-push", value="true")]
-[arg("temp_push_tag", long="temp-push-tag")]
-[group('Utility')]
+[group('Registry')]
 push-image $image=default_image $tag=default_tag $flavor=default_flavor $ghcr="false" $registry="" $temp_push="false" $temp_push_tag="":
     #!/usr/bin/env bash
     set -eoux pipefail
@@ -910,29 +911,78 @@ push-image $image=default_image $tag=default_tag $flavor=default_flavor $ghcr="f
 
     image_name=$({{ just }} image_name --image "${image}" --tag "${tag}" --flavor "${flavor}")
 
-    alias_tags=$({{ just }} generate-build-tags --image "${image}" --tag "${tag}" --flavor "${flavor}")
-
     if [[ "${ghcr}" == "true" && -n "${registry}" ]]; then
-
-      if [[ "${temp_push}" == "false" ]]; then
-        for tag in ${alias_tags}; do
-          ${PUSH_CMD} ${image_name}:${tag} ${registry}/${image_name}:${tag}
-          # We need to push twice to workaround https://github.com/containers/podman/issues/27796
-          ${PUSH_CMD} ${image_name}:${tag} ${registry}/${image_name}:${tag}
-          cat /tmp/digestfile
-        done
-
-      elif [[ "${temp_push}" == "true" ]]; then
-        ${PUSH_CMD} ${image_name}:${tag} ${registry}/${image_name}:${temp_push_tag}-${tag}
+      for _ in $(seq 2); do
         # We need to push twice to workaround https://github.com/containers/podman/issues/27796
         # If we don't do this then the digest changes and we are only signing this specific tag
-        ${PUSH_CMD} ${image_name}:${tag} ${registry}/${image_name}:${temp_push_tag}-${tag}
-      fi
-
+        "${PUSH_CMD}" "${image_name}:${tag}" "${registry}/${image_name}:${tag}-{{ arch }}"
+      done
     else
       echo "This is intended to be run in ghcr only."
       exit 1
     fi
+
+[arg("flavor", long="flavor", short="f")]
+[arg("ghcr", long="ghcr", value="true")]
+[arg("image", long="image", short="i")]
+[arg("registry", long="registry")]
+[arg("tag", long="tag", short="t")]
+[group('Registry')]
+manifest $image=default_image $tag=default_tag $flavor=default_flavor $ghcr="false" $registry="":
+    #!/usr/bin/env bash
+    set -eoux pipefail
+
+    image_name=$({{ just }} image_name --image "${image}" --tag "${tag}" --flavor "${flavor}")
+
+    LABELS=(
+      "io.artifacthub.package.deprecated=false"
+      "io.artifacthub.package.keywords=bootc,fedora,aurora,ublue,universal-blue,kde,linux"
+      "io.artifacthub.package.logo-url=https://avatars.githubusercontent.com/u/120078124?s=200&v=4"
+      "io.artifacthub.package.maintainers=[{\"name\": \"NiHaiden\", \"email\": \"me@nhaiden.io\"}]"
+      "io.artifacthub.package.readme-url=https://raw.githubusercontent.com/ublue-os/aurora/refs/heads/main/README.md"
+      "org.opencontainers.image.created=$(date -u +%Y\-%m\-%d\T%H\:%M\:%S\Z)"
+      "org.opencontainers.image.description=The ultimate productivity workstation"
+      "org.opencontainers.image.documentation=https://docs.getaurora.dev"
+      "org.opencontainers.image.source=https://raw.githubusercontent.com/ublue-os/aurora/refs/heads/main/Containerfile.in"
+      "org.opencontainers.image.url=https://getaurora.dev"
+      "org.opencontainers.image.vendor={{ repo_organization }}"
+    )
+
+    MANIFEST=$(${PODMAN} manifest create ${registry}/${image_name}:${tag})
+
+    for label in "${LABELS[@]}"; do
+      echo "Applying label "${label}" to manifest"
+      ${PODMAN} manifest annotate --index --annotation "$label" "${MANIFEST}"
+    done
+
+    TAGS=$(skopeo list-tags docker://${registry}/${image_name} | jq -r --arg tag "${tag}" '.Tags | map(select(contains($tag)))')
+
+    ${PODMAN} manifest add ${registry}/${image_name}:${tag} docker://${registry}/${image_name}:${tag}-{{ arch }}
+
+    if echo "$TAGS" | jq -re '.[] | select(test("${tag}-amd64"))' >/dev/null; then
+      ${PODMAN} manifest add ${registry}/${image_name}:${tag} docker://${registry}/${image_name}:${tag}-amd64
+    fi
+
+    if echo "$TAGS" | jq -re '.[] | select(test("${tag}-arm64"))' >/dev/null; then
+      ${PODMAN} manifest add ${registry}/${image_name}:${tag} docker://${registry}/${image_name}:${tag}-arm64
+    fi
+
+    PUSH_CMD_ARGS=()
+    PUSH_CMD_ARGS+=("--digestfile=/tmp/digestfile")
+    PUSH_CMD_ARGS+=("--compression-format=zstd")
+    PUSH_CMD_ARGS+=("--compression-level=3")
+    # TODO; This has failed already once, investigate if this actually does something and we need to use the retry function
+    PUSH_CMD_ARGS+=("--retry-delay=60s")
+    PUSH_CMD_ARGS+=("--retry=10")
+    PUSH_CMD_ARGS+=("--all=false")
+
+    PUSH_CMD=""${PODMAN}" manifest push "${PUSH_CMD_ARGS[@]}""
+
+    alias_tags=$({{ just }} generate-build-tags --image "${image}" --tag "${tag}" --flavor "${flavor}")
+
+    for alias_tag in ${alias_tags}; do
+      ${PUSH_CMD} ${registry}/${image_name}:${tag} ${registry}/${image_name}:${alias_tag}
+    done
 
 # Login to Container Registry
 [group('Utility')]
