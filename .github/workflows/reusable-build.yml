@@ -430,6 +430,16 @@ jobs:
                       --tag ${MATRIX_STREAM_NAME} \
                       --flavor ${MATRIX_IMAGE_FLAVOR})"
 
+      - name: Login to GitHub Container Registry
+        if: inputs.publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: |
+          just login-registry podman ghcr.io
+          # cosign gets credentials from docker
+          just login-registry docker ghcr.io
+
       - name: Push Manifest to GHCR
         id: push-manifest
         if: inputs.publish
