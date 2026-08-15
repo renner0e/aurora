@@ -157,8 +157,7 @@ jobs:
             --image "${MATRIX_BASE_NAME}" \
             --tag "${MATRIX_STREAM_NAME}" \
             --flavor "${MATRIX_IMAGE_FLAVOR}" \
-            --ghcr \
-            --retry-pull
+            --ghcr
 
       - name: Write new DNF package cache
         id: push-cache
