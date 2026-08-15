@@ -33,8 +33,5 @@ jobs:
       image_flavors: '["main", "nvidia-open"]'
       brand_name: ${{ matrix.brand_name }}
       stream_name: testing
-      # FIXME: MAIN has no arm builds in ublue-os/akmods yet
-      # https://github.com/ublue-os/akmods/pull/440
-      # architecture: '["aarch64","x86_64"]'
-      architecture: '["x86_64"]'
+      architecture: '["aarch64","x86_64"]'
       publish: ${{ github.event_name != 'pull_request' }}

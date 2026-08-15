@@ -565,7 +565,7 @@ akmods_flavor tag=default_tag:
     if [[ "{{ tag }}" =~ stable ]]; then
         akmods_flavor="coreos-stable"
     elif [[ "{{ tag }}" =~ testing ]]; then
-        akmods_flavor="main"
+        akmods_flavor="coreos-stable"
     else
         akmods_flavor="main"
     fi
