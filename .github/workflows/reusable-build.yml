@@ -15,9 +15,9 @@ on:
         description: "The Fedora Version: stable, or latest"
         required: true
         type: string
-      architecture:
-        description: "JSON string of architectures to build, '[aarch64, x86_64]'"
-        default: "['x86_64']"
+      architectures:
+        description: "comma separated string of architectures to build: 'arm64,amd64'"
+        default: "amd64"
         required: false
         type: string
       publish:
@@ -39,9 +39,46 @@ concurrency:
 permissions: {}
 
 jobs:
+  generate_matrix:
+    runs-on: ubuntu-slim
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Set matrix
+        id: set-matrix
+        env:
+          BRAND_NAME: "${{ inputs.brand_name }}"
+          IMAGE_FLAVORS: "${{ inputs.image_flavors }}"
+          ARCHITECTURES: "${{ inputs.architecture }}"
+        run: |
+          MATRIX=$(jq -nc \
+            --arg brand "$BRAND_NAME" \
+            --argjson flavors "$IMAGE_FLAVORS" \
+            --argjson archs "$ARCHITECTURES" \
+            '
+            {
+              include: [
+                ["", "-dx"][] as $dx |
+                $flavors[] as $flavor |
+                $archs[] as $arch |
+                ($flavor | if . == "main" or . == "" then "" else "-\(.)" end) as $f_suffix |
+                "\($brand)\($dx)\($f_suffix)" as $image_name |
+                {
+                  image_name: $image_name,
+                  target: "\($image_name)-\($arch)",
+                  base_name: "\($brand)\($dx)",
+                  image_flavor: $flavor,
+                  architecture: $arch
+                }
+              ]
+            }
+            ')
+          echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
+
   build_container:
     name: image
-    runs-on: ${{ matrix.architecture == 'x86_64' && 'ubuntu-26.04' || 'ubuntu-26.04-arm' }}
+    needs: generate_matrix
+    runs-on: ${{ matrix.platform == 'amd64' && 'ubuntu-26.04' || 'ubuntu-26.04-arm' }}
     permissions:
       contents: read
       packages: write
@@ -52,7 +89,7 @@ jobs:
     continue-on-error: false
     strategy:
       fail-fast: false
-      matrix: &matrix-config
+      matrix:
         image_flavor: ${{ fromJson(inputs.image_flavors) }}
         base_name: ["${{ inputs.brand_name }}", "${{ inputs.brand_name }}-dx"]
         stream_name: ["${{ inputs.stream_name }}"]
@@ -333,9 +370,6 @@ jobs:
     name: Create Manifest
     runs-on: ubuntu-26.04
     if: always()
-    strategy:
-      fail-fast: false
-      matrix: *matrix-config
     needs:
       - build_container
     permissions:
@@ -343,6 +377,18 @@ jobs:
       packages: write
       id-token: write
     steps:
+      - name: Exit on failure
+        shell: bash
+        env:
+          JOBS: ${{ toJson(needs) }}
+        run: |
+          for i in $(jq -r 'to_entries[] | .value.result' <<< "${JOBS}"); do
+            if [ "$i" != "success" ] && [ "$i" != "skipped" ]; then
+              echo "Status check not okay!"
+              exit 1
+            fi
+          done
+
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

@@ -36,8 +36,7 @@ jobs:
       brand_name: ${{ matrix.brand_name }}
       stream_name: stable
       # Enable ARM when it makes sense
-      # architecture: '["aarch64","x86_64"]'
-      architecture: '["x86_64"]'
+      architectures: amd64
       publish: ${{ github.event_name != 'pull_request' }}
 
   generate-release:

@@ -33,5 +33,5 @@ jobs:
       image_flavors: '["main", "nvidia-open"]'
       brand_name: ${{ matrix.brand_name }}
       stream_name: testing
-      architecture: '["aarch64","x86_64"]'
+      architectures: amd64,arm64
       publish: ${{ github.event_name != 'pull_request' }}
