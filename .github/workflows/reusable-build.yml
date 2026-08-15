@@ -47,7 +47,7 @@ jobs:
       - name: Set matrix
         id: set-matrix
         env:
-          BASE_NAMES: "${{ inputs.brand_name }}"
+          BASE_NAMES: "${{ inputs.brand_name }},${{ inputs.brand_name }}-dx"
           IMAGE_FLAVORS: "${{ inputs.image_flavors }}"
           STREAM_NAMES: "${{ inputs.stream_name }}"
           ARCHITECTURES: "${{ inputs.architectures }}"
