@@ -386,8 +386,6 @@ jobs:
     name: manifest (${{ matrix.image_name }}:${{ matrix.stream_name }})
     runs-on: ubuntu-26.04
     if: ${{ !cancelled() }}
-    needs:
-      - build_container
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.generate_matrix.outputs.manifest_matrix) }}
