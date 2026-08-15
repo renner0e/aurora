@@ -56,7 +56,7 @@ jobs:
           MATRIX="$(jq -nc \
                 --arg base_names "$BASE_NAMES" \
                 --arg image_flavors "$IMAGE_FLAVORS" \
-                --arg stream_names "$STREAM_NAME" \
+                --arg stream_names "$STREAM_NAMES" \
                 --arg architectures "$ARCHITECTURES" \
                 '
                 ($base_names | gsub("[\\[\\]\"]"; "") | split(",") | map(gsub("^\\s+|\\s+$"; ""))) as $base_names |
