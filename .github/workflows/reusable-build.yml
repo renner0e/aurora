@@ -53,52 +53,36 @@ jobs:
           ARCHITECTURES: "${{ inputs.architectures }}"
         run: |
           set -eoux pipefail
-          MATRIX="$(jq -nc \
-                --arg base_names "$BASE_NAMES" \
-                --arg image_flavors "$IMAGE_FLAVORS" \
-                --arg stream_names "$STREAM_NAMES" \
-                --arg architectures "$ARCHITECTURES" \
-                '
-                ($base_names | gsub("[\\[\\]\"]"; "") | split(",") | map(gsub("^\\s+|\\s+$"; ""))) as $base_names |
-                ($image_flavors | gsub("[\\[\\]\"]"; "") | split(",") | map(gsub("^\\s+|\\s+$"; ""))) as $image_flavors |
-                ($stream_names | gsub("[\\[\\]\"]"; "") | split(",") | map(gsub("^\\s+|\\s+$"; ""))) as $stream_names |
-                ($architectures | gsub("[\\[\\]\"]"; "") | split(",") | map(gsub("^\\s+|\\s+$"; ""))) as $architectures |
-                {
-                  include: [
-                    $base_names[] as $b |
-                    $image_flavors[] as $f |
-                    $stream_names[] as $s |
-                    $architectures[] as $a |
-                    select(($b | endswith("-dx") and ($a == "arm64" or $a == "aarch64")) | not) |
-                    ($f | if . == "main" or . == "" then "" else "-\(.)" end) as $f_suffix |
-                    {
-                      base_name: $b,
-                      image_flavor: $f,
-                      stream_name: $s,
-                      architecture: $a,
-                      image_name: "\($b)\($f_suffix)",
-                      target: "\($b)\($f_suffix)-\($a)"
-                    }
-                  ]
-                }
-                '
-              )"
-
-          # so aurora:testing-{amd64,arm64} are grouped so they don't block other builds
-          MANIFEST_MATRIX="$(echo "$MATRIX" | jq -c '
-            {
-              include: [.include | group_by(.image_name, .stream_name)[] | {
-                base_name: .[0].base_name,
-                image_flavor: .[0].image_flavor,
-                stream_name: .[0].stream_name,
-                image_name: .[0].image_name,
-                architectures: map(.architecture)
-              }]
-            }'
-          )"
+          MATRIX=$(jq -n \
+          --argjson base_names "$base_names" \
+          --argjson image_flavors "$image_flavors" \
+          --argjson stream_names "$stream_name" \
+          --argjson architectures "$architectures" \
+          '
+          {
+            include: [
+              $base_names[] as $b |
+              $image_flavors[] as $f |
+              $stream_names[] as $s |
+              ($f | if . == "main" or . == "" then "" else "-\(.)" end) as $f_suffix |
+        
+              # Filter valid architectures for the base image
+              ($architectures | map(select(($b | endswith("-dx") and (. == "arm64" or . == "aarch64")) | not))) as $valid_archs |
+              select($valid_archs | length > 0) |
+        
+              {
+                base_name_name: $b,
+                image_flavor: $f,
+                stream_name_name: $s,
+                architectures: $valid_archs,
+                image_name: "\($b)\($f_suffix)"
+              }
+            ]
+          }
+          '
+          )
 
           echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
-          echo "manifest_matrix=${MANIFEST_MATRIX}" >> $GITHUB_OUTPUT
 
   build_container:
     name: ${{ matrix.image_name }}:${{ matrix.stream_name }}-${{ matrix.architecture }}
