@@ -6,8 +6,8 @@ on:
         description: "JSON string of flavors to build, '[main, nvidia-open]'"
         default: "['main','nvidia-open']"
         type: string
-      image_name:
-        description: "The Brand Name: aurora"
+      image_names:
+        description: "JSON string of Image Name: '[aurora, aurora-dx]"
         required: true
         default: aurora
         type: string
@@ -16,7 +16,7 @@ on:
         required: true
         type: string
       architectures:
-        description: "comma separated string of architectures to build: 'arm64,amd64'"
+        description: "JSON string of architectures to build: '[amd64, arm64]'"
         default: "amd64"
         required: false
         type: string
@@ -47,7 +47,7 @@ jobs:
       - name: Set matrix
         id: set-matrix
         env:
-          BRAND_NAME: '["${{ inputs.image_name }}"]'
+          IMAGE: '["${{ inputs.image_name }}"]'
           IMAGE_FLAVORS: "${{ inputs.image_flavors }}"
           STREAM_NAME: "${{ inputs.stream_name }}"
           ARCHITECTURES: "${{ inputs.architectures }}"
