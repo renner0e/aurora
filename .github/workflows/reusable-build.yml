@@ -54,28 +54,27 @@ jobs:
         run: |
           set -eoux pipefail
 
-          MATRIX=$(jq -cn \
-          --argjson brand_names "$BRAND_NAME" \
+          MATRIX=$(jq -n \
+          --argjson base_names "$IMAGE" \
           --argjson image_flavors "$IMAGE_FLAVORS" \
           --argjson stream_names "$STREAM_NAME" \
           --argjson architectures "$ARCHITECTURES" \
           '
           {
             include: [
-              $brand_names[] as $brand |
-              ($brand, "\($brand)-dx") as $b |
+              $base_names[] as $b |
               $image_flavors[] as $f |
               $stream_names[] as $s |
               ($f | if . == "main" or . == "" then "" else "-\(.)" end) as $f_suffix |
 
-              # Filter valid architectures for the base image
+              # Filter valid architectures for -dx images
               ($architectures | map(select(($b | endswith("-dx") and (. == "arm64" or . == "aarch64")) | not))) as $valid_archs |
               select($valid_archs | length > 0) |
 
               {
-                base_name_name: $b,
+                base_name: $b,
                 image_flavor: $f,
-                stream_name_name: $s,
+                stream_name: $s,
                 architectures: $valid_archs,
                 image_name: "\($b)\($f_suffix)"
               }
