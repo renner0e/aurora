@@ -47,34 +47,34 @@ jobs:
       - name: Set matrix
         id: set-matrix
         env:
-          IMAGES: '["${{ inputs.image_names }}"]'
-          IMAGE_FLAVORS: '["${{ inputs.image_flavors }}"]'
-          STREAM_NAME: '["${{ inputs.stream_name }}"]'
-          ARCHITECTURES: '["${{ inputs.architectures }}"]'
+          IMAGES: "${{ inputs.image_names }}"
+          IMAGE_FLAVORS: "${{ inputs.image_flavors }}"
+          STREAM_NAME: "${{ inputs.stream_name }}"
+          ARCHITECTURES: "${{ inputs.architectures }}"
         run: |
           set -eoux pipefail
 
           MATRIX=$(jq -cn \
-          --argjson base_names "$IMAGES" \
-          --argjson image_flavors "$IMAGE_FLAVORS" \
-          --argjson stream_names "$STREAM_NAME" \
-          --argjson architectures "$ARCHITECTURES" \
-          '
-          {
-            include: [
-              $base_names[] as $b |
-              $image_flavors[] as $f |
-              $stream_names[] as $s |
-              {
-                image_name: $b,
-                image_flavor: $f,
-                stream_name: $s,
-                architectures: $architectures
-              }
-            ]
-          }
-          '
-          )
+            --argjson base_names "$IMAGES" \
+            --argjson image_flavors "$IMAGE_FLAVORS" \
+            --argjson stream_name "$STREAM_NAME" \
+            --argjson architectures "$ARCHITECTURES" \
+            '
+            {
+              include: [
+                $base_names[] as $b |
+                $image_flavors[] as $f |
+                $stream_name[] as $s |
+                {
+                  image_name: $b,
+                  image_flavor: $f,
+                  stream_name: $s,
+                  architectures: $architectures
+                }
+              ]
+            }
+            '
+            )
 
           echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
 
