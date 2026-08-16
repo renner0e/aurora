@@ -47,14 +47,14 @@ jobs:
       - name: Set matrix
         id: set-matrix
         env:
-          BRAND_NAME: "${{ inputs.brand_name }}"
+          BRAND_NAME: '["${{ inputs.brand_name }}"]'
           IMAGE_FLAVORS: "${{ inputs.image_flavors }}"
           STREAM_NAME: "${{ inputs.stream_name }}"
           ARCHITECTURES: "${{ inputs.architectures }}"
         run: |
           set -eoux pipefail
 
-          MATRIX=$(jq -n \
+          MATRIX=$(jq -cn \
           --argjson brand_names "$BRAND_NAME" \
           --argjson image_flavors "$IMAGE_FLAVORS" \
           --argjson stream_names "$STREAM_NAME" \
