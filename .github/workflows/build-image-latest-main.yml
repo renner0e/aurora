@@ -36,7 +36,7 @@ jobs:
       SIGNING_SECRET: ${{ secrets.SIGNING_SECRET }}
     with:
       image_flavors: '["main", "nvidia-open"]'
-      brand_name: '["aurora", "aurora-dx"]'
+      image_names: '["aurora", "aurora-dx"]'
       stream_name: '["latest"]'
       # FIXME: MAIN has no arm builds in ublue-os/akmods yet
       # https://github.com/ublue-os/akmods/pull/440

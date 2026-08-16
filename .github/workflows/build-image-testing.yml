@@ -27,7 +27,7 @@ jobs:
       SIGNING_SECRET: ${{ secrets.SIGNING_SECRET }}
     with:
       image_flavors: '["main", "nvidia-open"]'
-      brand_name: '["aurora", "aurora-dx"]'
+      image_names: '["aurora", "aurora-dx"]'
       stream_name: '["testing"]'
       architectures: '["amd64", "arm64"]'
       publish: ${{ github.event_name != 'pull_request' }}

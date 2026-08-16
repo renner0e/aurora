@@ -29,7 +29,7 @@ jobs:
     secrets:
       SIGNING_SECRET: ${{ secrets.SIGNING_SECRET }}
     with:
-      brand_name: '["aurora", "aurora-dx"]'
+      image_names: '["aurora", "aurora-dx"]'
       stream_name: '["stable"]'
       # Enable ARM when it makes sense
       architectures: '["amd64", "arm64"]'
