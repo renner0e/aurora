@@ -68,7 +68,7 @@ jobs:
               (if ($stream_name | type) == "array" then $stream_name[] else $stream_name end) as $s |
               $architectures[] as $a |
               {
-                image_name: $b,
+                base_name: $b,
                 image_flavor: $f,
                 stream_name: $s,
                 architecture: $a
