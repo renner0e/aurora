@@ -47,30 +47,31 @@ jobs:
       - name: Set matrix
         id: set-matrix
         env:
-          BASE_NAMES: "${{ inputs.brand_name }},${{ inputs.brand_name }}-dx"
+          BRAND_NAME: "${{ inputs.brand_name }}"
           IMAGE_FLAVORS: "${{ inputs.image_flavors }}"
           STREAM_NAME: "${{ inputs.stream_name }}"
           ARCHITECTURES: "${{ inputs.architectures }}"
         run: |
           set -eoux pipefail
 
-          MATRIX=(jq -n \
-          --argjson base_names "$BASE_NAMES" \
+          MATRIX=$(jq -n \
+          --argjson brand_names "$BRAND_NAME" \
           --argjson image_flavors "$IMAGE_FLAVORS" \
           --argjson stream_names "$STREAM_NAME" \
           --argjson architectures "$ARCHITECTURES" \
           '
           {
             include: [
-              $base_names[] as $b |
+              $brand_names[] as $brand |
+              ($brand, "\($brand)-dx") as $b |
               $image_flavors[] as $f |
               $stream_names[] as $s |
               ($f | if . == "main" or . == "" then "" else "-\(.)" end) as $f_suffix |
-        
+
               # Filter valid architectures for the base image
               ($architectures | map(select(($b | endswith("-dx") and (. == "arm64" or . == "aarch64")) | not))) as $valid_archs |
               select($valid_archs | length > 0) |
-        
+
               {
                 base_name_name: $b,
                 image_flavor: $f,
@@ -84,7 +85,6 @@ jobs:
           )
 
           echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
-
 
   build_container:
     name: ${{ matrix.image_name }}:${{ matrix.stream_name }}-${{ matrix.architecture }}

@@ -34,9 +34,9 @@ jobs:
         brand_name: ["aurora"]
     with:
       brand_name: ${{ matrix.brand_name }}
-      stream_name: stable
+      stream_name: '["stable"]'
       # Enable ARM when it makes sense
-      architectures: amd64
+      architectures: '["amd64", "arm64"]'
       publish: ${{ github.event_name != 'pull_request' }}
 
   generate-release:
