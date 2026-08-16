@@ -49,15 +49,16 @@ jobs:
         env:
           BASE_NAMES: "${{ inputs.brand_name }},${{ inputs.brand_name }}-dx"
           IMAGE_FLAVORS: "${{ inputs.image_flavors }}"
-          STREAM_NAMES: "${{ inputs.stream_name }}"
+          STREAM_NAME: "${{ inputs.stream_name }}"
           ARCHITECTURES: "${{ inputs.architectures }}"
         run: |
           set -eoux pipefail
-          MATRIX=$(jq -n \
-          --argjson base_names "$base_names" \
-          --argjson image_flavors "$image_flavors" \
-          --argjson stream_names "$stream_name" \
-          --argjson architectures "$architectures" \
+
+          MATRIX=(jq -n \
+          --argjson base_names "$BASE_NAMES" \
+          --argjson image_flavors "$IMAGE_FLAVORS" \
+          --argjson stream_names "$STREAM_NAME" \
+          --argjson architectures "$ARCHITECTURES" \
           '
           {
             include: [
@@ -83,6 +84,7 @@ jobs:
           )
 
           echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
+
 
   build_container:
     name: ${{ matrix.image_name }}:${{ matrix.stream_name }}-${{ matrix.architecture }}
