@@ -28,12 +28,8 @@ jobs:
       artifact-metadata: write
     secrets:
       SIGNING_SECRET: ${{ secrets.SIGNING_SECRET }}
-    strategy:
-      fail-fast: false
-      matrix:
-        brand_name: ["aurora"]
     with:
-      brand_name: ${{ matrix.brand_name }}
+      brand_name: '["aurora", "aurora-dx"]'
       stream_name: '["stable"]'
       # Enable ARM when it makes sense
       architectures: '["amd64", "arm64"]'
