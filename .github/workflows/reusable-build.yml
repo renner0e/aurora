@@ -81,7 +81,7 @@ jobs:
           echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
 
   build_container:
-    name: ${{ matrix.image_name }}:${{ matrix.stream_name }}-${{ matrix.architectures }}
+    name: ${{ matrix.image_name }}:${{ matrix.stream_name }}-${{ matrix.architecture }}
     needs: generate_matrix
     strategy:
       fail-fast: false
