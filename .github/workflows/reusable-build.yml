@@ -47,15 +47,15 @@ jobs:
       - name: Set matrix
         id: set-matrix
         env:
-          IMAGE: '["${{ inputs.image_name }}"]'
-          IMAGE_FLAVORS: "${{ inputs.image_flavors }}"
-          STREAM_NAME: "${{ inputs.stream_name }}"
-          ARCHITECTURES: "${{ inputs.architectures }}"
+          IMAGES: '["${{ inputs.image_names }}"]'
+          IMAGE_FLAVORS: '["${{ inputs.image_flavors }}"]'
+          STREAM_NAME: '["${{ inputs.stream_name }}"]'
+          ARCHITECTURES: '["${{ inputs.architectures }}"]'
         run: |
           set -eoux pipefail
 
-          MATRIX=$(jq -n \
-          --argjson base_names "$IMAGE" \
+          MATRIX=$(jq -cn \
+          --argjson base_names "$IMAGES" \
           --argjson image_flavors "$IMAGE_FLAVORS" \
           --argjson stream_names "$STREAM_NAME" \
           --argjson architectures "$ARCHITECTURES" \
@@ -65,18 +65,11 @@ jobs:
               $base_names[] as $b |
               $image_flavors[] as $f |
               $stream_names[] as $s |
-              ($f | if . == "main" or . == "" then "" else "-\(.)" end) as $f_suffix |
-
-              # Filter valid architectures for -dx images
-              ($architectures | map(select(($b | endswith("-dx") and (. == "arm64" or . == "aarch64")) | not))) as $valid_archs |
-              select($valid_archs | length > 0) |
-
               {
-                base_name: $b,
+                image_name: $b,
                 image_flavor: $f,
                 stream_name: $s,
-                architectures: $valid_archs,
-                image_name: "\($b)\($f_suffix)"
+                architectures: $architectures
               }
             ]
           }
