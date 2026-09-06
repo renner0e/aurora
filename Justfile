@@ -836,7 +836,7 @@ bootc $image=default_image $tag=default_tag $flavor=default_flavor *ARGS:
         "${BOOTC_INSTALL_OPTIONS[@]}" \
         -v /dev:/dev \
         -v "${BUILD_BASE_DIR:-.}:/data" \
-        "${image_name}:${tag}" bootc {{ ARGS }}
+        "localhost/${image_name}:${tag}" bootc {{ ARGS }}
 
 # Example: sudo just disk-image -t testing --backend composefs
 # Create bootable image
