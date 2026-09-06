@@ -832,6 +832,7 @@ bootc $image=default_image $tag=default_tag $flavor=default_flavor *ARGS:
     ${PODMAN} run \
         --rm --privileged --pid=host \
         -it \
+        -e RUST_LOG=debug \
         "${BOOTC_INSTALL_OPTIONS[@]}" \
         -v /dev:/dev \
         -v "${BUILD_BASE_DIR:-.}:/data" \
