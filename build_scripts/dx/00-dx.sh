@@ -87,13 +87,12 @@ else
     docker-compose
 fi
 
-# VSCode package from Microsoft repo
-dnf -y install --from-repo=code \
-    code
-
-dnf -y install --from-repo='copr:copr.fedorainfracloud.org:karmab:kcli' kcli
-
-dnf -y install --from-repo='copr:copr.fedorainfracloud.org:ublue-os:packages' ublue-os-libvirt-workarounds
+dnf config-manager setopt "copr:copr.fedorainfracloud.org:ublue-os:staging.includepkgs=plasma-setup"
+# shellcheck disable=SC1010
+dnf do -y \
+  --action install --from-repo=code code \
+  --action install --from-repo='copr:copr.fedorainfracloud.org:karmab:kcli' kcli \
+  --action install --from-repo='copr:copr.fedorainfracloud.org:ublue-os:packages' ublue-os-libvirt-workarounds
 
 rsync -rvK /ctx/system_files/dx/ /
 

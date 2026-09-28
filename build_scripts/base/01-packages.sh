@@ -127,9 +127,6 @@ fi
 
 dnf -y install --enablerepo='fedora-multimedia' "${PACKAGES[@]}"
 
-# Fedora Tailscale is usually behind
-dnf -y install --from-repo='tailscale-stable' tailscale
-
 COPR_UBLUE_OS_PACKAGES=(
     kcm_ublue
     krunner-bazaar
@@ -139,11 +136,21 @@ COPR_UBLUE_OS_PACKAGES=(
     uupd
   )
 
-dnf -y install --from-repo='copr:copr.fedorainfracloud.org:ublue-os:packages' "${COPR_UBLUE_OS_PACKAGES[@]}"
+dnf config-manager setopt "copr:copr.fedorainfracloud.org:ublue-os:packages.includepkgs=${COPR_UBLUE_OS_PACKAGES[*]}"
+dnf config-manager setopt "copr:copr.fedorainfracloud.org:ublue-os:staging.includepkgs=plasma-setup"
+cat /etc/dnf/repos.override.d/99-config_manager.repo
 
-dnf -y install --from-repo='copr:copr.fedorainfracloud.org:ledif:kairpods' kairpods
+# https://invent.kde.org/plasma/plasma-setup/-/issues/72
+# shellcheck disable=SC1010
+dnf do -y \
+  --action install --from-repo='tailscale-stable' tailscale \
+  --action install --from-repo='copr:copr.fedorainfracloud.org:ublue-os:packages' "${COPR_UBLUE_OS_PACKAGES[@]}" \
+  --action install --from-repo='copr:copr.fedorainfracloud.org:ledif:kairpods' kairpods \
+  --action install --from-repo='copr:copr.fedorainfracloud.org:lizardbyte:stable' Sunshine \
+  --action install --from-repo='copr:copr.fedorainfracloud.org:ublue-os:staging' plasma-setup-"${PLASMA_VERS}"-*.aurora \
+  --action remove plasma-setup
 
-dnf -y install --from-repo='copr:copr.fedorainfracloud.org:lizardbyte:stable' sunshine
+dnf versionlock add plasma-setup
 
 # Packages to exclude - common to all versions
 EXCLUDED_PACKAGES=(
@@ -171,12 +178,6 @@ dnf -y remove "${EXCLUDED_PACKAGES[@]}"
 #    Workaround pkcs11-provider regression, see issue #1943
 #    dnf5 upgrade --refresh --advisory=FEDORA-2024-dd2e9fb225
 #fi
-
-# https://invent.kde.org/plasma/plasma-setup/-/issues/72
-dnf -y swap --from-repo=copr:copr.fedorainfracloud.org:ublue-os:staging \
-  plasma-setup plasma-setup-"${PLASMA_VERS}"-*.aurora
-
-dnf versionlock add plasma-setup
 
 # Install DX specific packages
 if [[ "${IMAGE_FLAVOR}" == "dx" ]]; then
