@@ -44,6 +44,8 @@ export SUDOIF := if `id -u` == "0" { "" } else { "sudo" }
 export PODMAN := "podman"
 export BUILDAH := "buildah"
 
+build_timestamp := shell("TZ=UTC date +%s")
+
 # Define a retry function for use in recipes
 retry_function := '
 retry() {
@@ -223,7 +225,7 @@ build $image=default_image $tag=default_tag $flavor=default_flavor $rechunk="fal
     fi
 
     # Get Version
-    TIMESTAMP="$(date +%Y%m%d)"
+    TIMESTAMP="$(date --date="@{{ build_timestamp }}" +%Y%m%d)"
     if [[ "${tag}" =~ stable ]]; then
         ver="${fedora_version}.${TIMESTAMP}"
     else
@@ -265,7 +267,7 @@ build $image=default_image $tag=default_tag $flavor=default_flavor $rechunk="fal
     LABELS+=("--label" "io.artifacthub.package.logo-url=https://avatars.githubusercontent.com/u/120078124?s=200&v=4")
     LABELS+=("--label" "io.artifacthub.package.maintainers=[{\"name\": \"NiHaiden\", \"email\": \"me@nhaiden.io\"}]")
     LABELS+=("--label" "io.artifacthub.package.readme-url=https://raw.githubusercontent.com/ublue-os/aurora/refs/heads/main/README.md")
-    LABELS+=("--label" "org.opencontainers.image.created=$(date -u +%Y\-%m\-%d\T%H\:%M\:%S\Z)")
+    LABELS+=("--label" "org.opencontainers.image.created=$(date --date="@{{ build_timestamp }}" -u +%Y\-%m\-%d\T%H\:%M\:%S\Z)")
     LABELS+=("--label" "org.opencontainers.image.description=The ultimate productivity workstation")
     LABELS+=("--label" "org.opencontainers.image.documentation=https://docs.getaurora.dev")
     LABELS+=("--label" "org.opencontainers.image.source=https://raw.githubusercontent.com/ublue-os/aurora/refs/heads/main/Containerfile.in")
@@ -531,7 +533,7 @@ generate-build-tags $image=default_image $tag=default_tag $flavor=default_flavor
     FEDORA_VERSION=$({{ just }} fedora_version --image "${image}" --tag "${tag}" --flavor "${flavor}")
     IMAGE_NAME=$({{ just }} image_name --image "${image}" --tag "${tag}" --flavor "${flavor}")
 
-    TIMESTAMP="$(date +%Y%m%d)"
+    TIMESTAMP="$(date --date="@{{ build_timestamp }}" +%Y%m%d)"
     version="${FEDORA_VERSION}.${TIMESTAMP}"
 
     BUILD_TAGS=()
@@ -596,7 +598,7 @@ generate-point $image=default_image $tag=default_tag $flavor=default_flavor:
 
     {{ just }} validate --image "${image}" --tag "${tag}" --flavor "${flavor}"
     IMAGE_NAME=$({{ just }} image_name --image "${image}" --tag "${tag}" --flavor "${flavor}")
-    TIMESTAMP="$(date +%Y%m%d)"
+    TIMESTAMP="$(date --date="@{{ build_timestamp }}" +%Y%m%d)"
 
     tags="/tmp/${IMAGE_NAME}-tags.json"
 
@@ -754,7 +756,7 @@ setup-cache $image=default_image $tag=default_tag $flavor=default_flavor $ghcr="
     BUILDAH_CACHE="buildah-cache-${UID}"
 
     POINT=$({{ just }} generate-point --image "${image}" --tag "${tag}" --flavor "${flavor}")
-    CURRENT_DAY="$(LC_TIME=C date +%A)"
+    CURRENT_DAY="$(LC_TIME=C date --date="@{{ build_timestamp }}" +%A)"
     BLESSED_DAY="Sunday"
 
     # Always attempt to pull cache, but don't on the first run that will publish the build on Sundays
